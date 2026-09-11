@@ -15,6 +15,7 @@ smish-ventures/
 ├── style.css          # Dark-mode design system with Outfit & Inter typography
 ├── vercel.json        # Clean URLs and route rewrites (/privacy, /terms, /support)
 └── assets/
+    ├── logo.png             # Official SMISH Ventures studio logo
     ├── movie-mogul-icon.png
     ├── movie-mogul-hero.webp
     └── founder-sim-icon.png

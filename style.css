@@ -113,6 +113,25 @@ body {
   gap: 12px;
   text-decoration: none;
   color: #fff;
+  transition: opacity var(--transition-fast);
+}
+
+.brand-logo:hover {
+  opacity: 0.95;
+}
+
+.brand-logo-img {
+  height: 38px;
+  width: auto;
+  max-width: 170px;
+  object-fit: contain;
+  display: block;
+  transition: transform var(--transition-fast), filter var(--transition-fast);
+}
+
+.brand-logo:hover .brand-logo-img {
+  transform: translateY(-1px) scale(1.02);
+  filter: drop-shadow(0 0 16px rgba(245, 197, 24, 0.45));
 }
 
 .brand-crest {
@@ -669,6 +688,12 @@ body {
   margin-bottom: 40px;
 }
 
+.footer-brand .brand-logo-img {
+  height: 42px;
+  max-width: 180px;
+  margin-bottom: 4px;
+}
+
 .footer-brand p {
   margin-top: 12px;
   max-width: 320px;
@@ -722,5 +747,9 @@ body {
 @media (max-width: 768px) {
   .nav-links {
     display: none;
+  }
+  .brand-logo-img {
+    height: 32px;
+    max-width: 140px;
   }
 }
