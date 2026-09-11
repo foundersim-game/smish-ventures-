@@ -34,19 +34,13 @@ npx serve .
 ```
 
 ## Deployment to Vercel
-1. Create a new repository on your GitHub account: `smishventures` or `smish-ventures`.
-2. Push this directory:
-   ```bash
-   git remote add origin https://github.com/<YOUR_USERNAME>/<REPO_NAME>.git
-   git branch -M main
-   git push -u origin main
-   ```
-3. In [Vercel Dashboard](https://vercel.com):
+1. Repository: [`https://github.com/foundersim-game/smish-ventures`](https://github.com/foundersim-game/smish-ventures)
+2. In [Vercel Dashboard](https://vercel.com/new):
    - Click **Add New...** > **Project**.
-   - Import your GitHub repository.
+   - Import `foundersim-game/smish-ventures`.
    - Framework Preset: **Other** (Root directory: `./`).
    - Click **Deploy**.
-4. Attach Custom Domain:
+3. Attach Custom Domain:
    - Go to **Project Settings** > **Domains**.
    - Add `smishventures.com` and `www.smishventures.com`.
    - Update DNS records (A Record: `76.76.21.21` / CNAME: `cname.vercel-dns.com`) at your registrar.
