@@ -2,7 +2,7 @@
 
 Official publisher and game studio website for **SMISH Ventures** (`smishventures.com`), home to:
 - **Movie Mogul: Studio Tycoon** (iOS & iPadOS)
-- **Founder Sim** (Tech Startup Tycoon — `foundersim.in`)
+- **Founder Sim: Startup Game** (Tech Startup Tycoon — [Apple App Store](https://apps.apple.com/us/app/founder-sim-startup-game/id6761432505))
 - Upcoming strategic simulation titles
 
 ## Architecture & Structure
