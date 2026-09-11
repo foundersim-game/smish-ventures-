@@ -11,37 +11,39 @@
   --bg-card: #0F1422;
   --bg-card-hover: #151C30;
   --bg-glass: rgba(15, 20, 34, 0.75);
-  
+
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-highlight: rgba(252, 211, 77, 0.35);
   --border-glow: rgba(252, 211, 77, 0.15);
-  
+
   --text-primary: #FFFFFF;
   --text-secondary: #94A3B8;
   --text-muted: #64748B;
-  
+
   --gold-primary: #FCD34D;
   --gold-dark: #D97706;
   --gold-glow: rgba(245, 158, 11, 0.3);
-  
+
   --cyan-primary: #06B6D4;
   --emerald-primary: #10B981;
   --purple-primary: #8B5CF6;
-  
+
   --radius-sm: 8px;
   --radius-md: 14px;
   --radius-lg: 20px;
   --radius-full: 9999px;
-  
+
   --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  
+
   --max-width: 1200px;
   --transition-fast: 0.15s ease;
   --transition-smooth: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -69,7 +71,7 @@ body {
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  background: 
+  background:
     radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.08) 0%, transparent 60%),
     radial-gradient(circle at 90% 40%, rgba(6, 182, 212, 0.05) 0%, transparent 50%),
     radial-gradient(circle at 10% 80%, rgba(139, 92, 246, 0.04) 0%, transparent 50%);
@@ -425,8 +427,8 @@ body {
   width: 58px;
   height: 58px;
   border-radius: 14px;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.6);
-  border: 1.5px solid rgba(255,255,255,0.15);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
   flex-shrink: 0;
   object-fit: cover;
 }
@@ -576,7 +578,7 @@ body {
   border: 1.5px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: clamp(24px, 4vw, 48px);
-  box-shadow: 0 16px 40px rgba(0,0,0,0.6);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
 }
 
 .legal-content h2 {
@@ -587,7 +589,7 @@ body {
   color: #fff;
   margin: 36px 0 14px;
   padding-top: 18px;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .legal-content h2:first-of-type {
@@ -611,7 +613,7 @@ body {
   margin-bottom: 16px;
 }
 
-.legal-content ul, 
+.legal-content ul,
 .legal-content ol {
   margin: 0 0 20px 24px;
   color: #CBD5E1;
@@ -760,6 +762,7 @@ body {
   .nav-links {
     display: none;
   }
+
   .brand-logo-img {
     height: 32px;
     max-width: 140px;
