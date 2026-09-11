@@ -5,6 +5,11 @@ Official publisher and game studio website for **SMISH Ventures** (`smishventure
 - **Founder Sim: Startup Game** (Tech Startup Tycoon — [Apple App Store](https://apps.apple.com/us/app/founder-sim-startup-game/id6761432505))
 - Upcoming strategic simulation titles
 
+**Contact & Inquiries:**
+- General: [`hey@smishventures.com`](mailto:hey@smishventures.com)
+- Support: [`support@smishventures.com`](mailto:support@smishventures.com)
+- Privacy: [`privacy@smishventures.com`](mailto:privacy@smishventures.com)
+
 ## Architecture & Structure
 ```text
 smish-ventures/
