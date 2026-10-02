@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { hostName, hostAvatar, mode, scenarioId, settings, isPaidSession } = body;
 
-    const result = RoomService.createRoom({
+    const result = await RoomService.createRoom({
       hostName,
       hostAvatar,
       mode,

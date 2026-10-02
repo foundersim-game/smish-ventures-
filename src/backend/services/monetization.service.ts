@@ -44,15 +44,15 @@ export const HOST_PASS_TIERS: HostPassProduct[] = [
 export class MonetizationService {
   private static repo = RoomRepository.getInstance();
 
-  public static isRoomAdEligible(roomCode: string): boolean {
-    const room = this.repo.findByCode(roomCode);
+  public static async isRoomAdEligible(roomCode: string): Promise<boolean> {
+    const room = await this.repo.findByCode(roomCode);
     if (!room) return false;
     // Paid rooms are completely ad-free for the entire room
     return !room.isPaidSession;
   }
 
-  public static activateRoomHostPass(roomCode: string): void {
-    this.repo.updateRoom(roomCode, { isPaidSession: true });
+  public static async activateRoomHostPass(roomCode: string): Promise<void> {
+    await this.repo.updateRoom(roomCode, { isPaidSession: true });
   }
 
   public static getPricingTiers(): HostPassProduct[] {

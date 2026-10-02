@@ -9,13 +9,13 @@ export async function GET(
 ) {
   const { code } = await params;
   const repo = RoomRepository.getInstance();
-  const room = repo.findByCode(code);
+  const room = await repo.findByCode(code);
 
   if (!room) {
     return NextResponse.json({ success: false, error: "Room not found" }, { status: 404 });
   }
 
-  const players = repo.getPlayers(room.id);
+  const players = await repo.getPlayers(room.id);
   const scenario = ScenarioRegistry.getById(room.scenarioId);
 
   return NextResponse.json({
@@ -35,7 +35,7 @@ export async function PATCH(
     const body = await req.json();
     const { hostPlayerId, settings } = body;
 
-    const updated = RoomService.updateSettings(code, hostPlayerId, settings);
+    const updated = await RoomService.updateSettings(code, hostPlayerId, settings);
     return NextResponse.json({ success: true, room: updated });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to update room";

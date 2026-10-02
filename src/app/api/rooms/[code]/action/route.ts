@@ -15,32 +15,32 @@ export async function POST(
 
     switch (action) {
       case "START_GAME": {
-        const room = GameplayService.startGame(code, playerId);
+        const room = await GameplayService.startGame(code, playerId);
         return NextResponse.json({ success: true, room });
       }
 
       case "LOCK_INITIAL_VOTE": {
-        GameplayService.lockInitialVote(code, playerId, payload.optionId);
+        await GameplayService.lockInitialVote(code, playerId, payload.optionId);
         return NextResponse.json({ success: true });
       }
 
       case "EXTEND_DISCUSSION": {
-        const room = GameplayService.extendDiscussion(code, playerId, payload?.seconds || 30);
+        const room = await GameplayService.extendDiscussion(code, playerId, payload?.seconds || 30);
         return NextResponse.json({ success: true, room });
       }
 
       case "SKIP_DISCUSSION": {
-        const room = GameplayService.transitionToFinalVote(code);
+        const room = await GameplayService.transitionToFinalVote(code);
         return NextResponse.json({ success: true, room });
       }
 
       case "LOCK_FINAL_VOTE": {
-        GameplayService.lockFinalVote(code, playerId, payload.optionId);
+        await GameplayService.lockFinalVote(code, playerId, payload.optionId);
         return NextResponse.json({ success: true });
       }
 
       case "ADVANCE_REVEAL_BEAT": {
-        const room = GameplayService.advanceRevealBeat(code, payload.targetBeat);
+        const room = await GameplayService.advanceRevealBeat(code, payload.targetBeat);
         return NextResponse.json({ success: true, room });
       }
 
@@ -50,32 +50,32 @@ export async function POST(
       }
 
       case "TRIGGER_BUZZER": {
-        GameplayService.triggerBuzzer(code, playerId, payload.buzzerType);
+        await GameplayService.triggerBuzzer(code, playerId, payload.buzzerType);
         return NextResponse.json({ success: true });
       }
 
       case "TRIGGER_EMOJI_REACTION": {
-        GameplayService.triggerEmojiReaction(code, playerId, payload.emoji);
+        await GameplayService.triggerEmojiReaction(code, playerId, payload.emoji);
         return NextResponse.json({ success: true });
       }
 
       case "ADD_BOT_PLAYER": {
-        const res = RoomService.addBotPlayer(code, payload?.name, payload?.avatar);
+        const res = await RoomService.addBotPlayer(code, payload?.name, payload?.avatar);
         return NextResponse.json({ success: true, ...res });
       }
 
       case "KICK_PLAYER": {
-        RoomService.kickPlayer(code, playerId, payload.targetPlayerId);
+        await RoomService.kickPlayer(code, playerId, payload.targetPlayerId);
         return NextResponse.json({ success: true });
       }
 
       case "LEAVE_ROOM": {
-        RoomService.kickPlayer(code, playerId, playerId);
+        await RoomService.kickPlayer(code, playerId, playerId);
         return NextResponse.json({ success: true });
       }
 
       case "SUBMIT_INFLUENCE": {
-        BlameService.submitInfluence(code, {
+        await BlameService.submitInfluence(code, {
           playerId,
           roundIndex: payload.roundIndex,
           influencedByPlayerId: payload.influencedByPlayerId,
@@ -85,7 +85,7 @@ export async function POST(
       }
 
       case "SUBMIT_BLAME": {
-        BlameService.submitBlame(code, {
+        await BlameService.submitBlame(code, {
           accuserPlayerId: playerId,
           roundIndex: payload.roundIndex,
           blamedPlayerId: payload.blamedPlayerId,
@@ -94,7 +94,7 @@ export async function POST(
       }
 
       case "COMPILE_RECEIPTS": {
-        const result = BlameService.compileReceipts(code);
+        const result = await BlameService.compileReceipts(code);
         return NextResponse.json({
           success: true,
           receipts: result?.receipts || null,
@@ -103,7 +103,7 @@ export async function POST(
       }
 
       case "ACTIVATE_HOST_PASS": {
-        MonetizationService.activateRoomHostPass(code);
+        await MonetizationService.activateRoomHostPass(code);
         return NextResponse.json({ success: true });
       }
 

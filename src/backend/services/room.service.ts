@@ -24,14 +24,14 @@ export class RoomService {
   /**
    * Creates a new game room and establishes the host player.
    */
-  public static createRoom(params: {
+  public static async createRoom(params: {
     hostName: string;
     hostAvatar: AvatarKey;
     mode?: GameMode;
     scenarioId?: string;
     settings?: Partial<GameSettings>;
     isPaidSession?: boolean;
-  }): { room: RoomSession; host: PlayerSession } {
+  }): Promise<{ room: RoomSession; host: PlayerSession }> {
     const mode = params.mode || "party";
     const defaultSettings = mode === "couples" ? DEFAULT_COUPLES_SETTINGS : DEFAULT_PARTY_SETTINGS;
     const finalSettings: GameSettings = { ...defaultSettings, ...(params.settings || {}) };
@@ -49,8 +49,10 @@ export class RoomService {
     let roomCode = this.generateRoomCode();
 
     // Ensure uniqueness
-    while (this.repo.findByCode(roomCode)) {
+    let attempt = 0;
+    while ((await this.repo.findByCode(roomCode)) && attempt < 10) {
       roomCode = this.generateRoomCode();
+      attempt++;
     }
 
     const hostId = crypto.randomUUID();
@@ -100,8 +102,8 @@ export class RoomService {
       lastSeenAt: now,
     };
 
-    this.repo.saveRoom(room);
-    this.repo.savePlayer(host);
+    await this.repo.saveRoom(room);
+    await this.repo.savePlayer(host, roomCode);
 
     return { room, host };
   }
@@ -109,13 +111,13 @@ export class RoomService {
   /**
    * Allows a player to join an existing room.
    */
-  public static joinRoom(params: {
+  public static async joinRoom(params: {
     roomCode: string;
     playerName: string;
     avatar: AvatarKey;
-  }): { room: RoomSession; player: PlayerSession } {
+  }): Promise<{ room: RoomSession; player: PlayerSession }> {
     const code = params.roomCode.toUpperCase().trim();
-    const room = this.repo.findByCode(code);
+    const room = await this.repo.findByCode(code);
 
     if (!room) {
       throw new Error(`Room with code '${code}' not found.`);
@@ -125,7 +127,7 @@ export class RoomService {
       throw new Error("Game has already started. Cannot join in-progress session.");
     }
 
-    const existingPlayers = this.repo.getPlayers(room.id);
+    const existingPlayers = await this.repo.getPlayers(room.id);
     const maxPlayers = room.mode === "couples" ? 2 : room.settings.maxPlayers;
 
     if (existingPlayers.length >= maxPlayers) {
@@ -161,9 +163,9 @@ export class RoomService {
       lastSeenAt: now,
     };
 
-    this.repo.savePlayer(player);
+    await this.repo.savePlayer(player, room.roomCode);
 
-    const updatedPlayers = this.repo.getPlayers(room.id);
+    const updatedPlayers = await this.repo.getPlayers(room.id);
     this.bus.publish(room.roomCode, "PLAYERS_UPDATED", { players: updatedPlayers });
     this.bus.publish(room.roomCode, "PLAYER_JOINED", { player, totalPlayers: updatedPlayers.length });
 
@@ -173,11 +175,11 @@ export class RoomService {
   /**
    * Adds an AI/Demo bot player to the room (useful for testing or solo play).
    */
-  public static addBotPlayer(
+  public static async addBotPlayer(
     roomCode: string,
     botName?: string,
     botAvatar?: AvatarKey
-  ): { room: RoomSession; player: PlayerSession } {
+  ): Promise<{ room: RoomSession; player: PlayerSession }> {
     const defaultBots: { name: string; avatar: AvatarKey }[] = [
       { name: "Riya", avatar: "fire" },
       { name: "Karan", avatar: "sunglasses" },
@@ -189,9 +191,9 @@ export class RoomService {
       { name: "Leo", avatar: "lion" },
     ];
 
-    const room = this.repo.findByCode(roomCode);
+    const room = await this.repo.findByCode(roomCode);
     if (!room) throw new Error("Room not found");
-    const existingPlayers = this.repo.getPlayers(room.id);
+    const existingPlayers = await this.repo.getPlayers(room.id);
 
     const usedNames = new Set(existingPlayers.map((p) => p.name));
     const candidate = defaultBots.find((b) => !usedNames.has(b.name)) || {
@@ -199,7 +201,7 @@ export class RoomService {
       avatar: "sunglasses" as AvatarKey,
     };
 
-    return this.joinRoom({
+    return await this.joinRoom({
       roomCode,
       playerName: botName || candidate.name,
       avatar: botAvatar || candidate.avatar,
@@ -209,16 +211,19 @@ export class RoomService {
   /**
    * Reconnects an existing player.
    */
-  public static reconnectPlayer(roomCode: string, playerId: string): { room: RoomSession; player: PlayerSession } {
-    const room = this.repo.findByCode(roomCode);
+  public static async reconnectPlayer(
+    roomCode: string,
+    playerId: string
+  ): Promise<{ room: RoomSession; player: PlayerSession }> {
+    const room = await this.repo.findByCode(roomCode);
     if (!room) throw new Error("Room not found.");
 
-    const player = this.repo.getPlayer(room.id, playerId);
+    const player = await this.repo.getPlayer(room.id, playerId);
     if (!player) throw new Error("Player session not found.");
 
-    this.repo.updatePlayer(room.id, playerId, { connected: true, lastSeenAt: Date.now() });
+    await this.repo.updatePlayer(room.id, playerId, { connected: true, lastSeenAt: Date.now() });
 
-    const updatedPlayers = this.repo.getPlayers(room.id);
+    const updatedPlayers = await this.repo.getPlayers(room.id);
     this.bus.publish(room.roomCode, "PLAYERS_UPDATED", { players: updatedPlayers });
 
     return { room, player };
@@ -227,37 +232,42 @@ export class RoomService {
   /**
    * Disconnects a player and handles automatic host migration if needed.
    */
-  public static disconnectPlayer(roomCode: string, playerId: string): void {
-    const room = this.repo.findByCode(roomCode);
+  public static async disconnectPlayer(roomCode: string, playerId: string): Promise<void> {
+    const room = await this.repo.findByCode(roomCode);
     if (!room) return;
 
-    this.repo.updatePlayer(room.id, playerId, { connected: false, lastSeenAt: Date.now() });
+    await this.repo.updatePlayer(room.id, playerId, { connected: false, lastSeenAt: Date.now() });
 
     // Host migration check
     if (room.hostId === playerId) {
-      const remainingConnected = this.repo.getPlayers(room.id).filter((p) => p.connected && p.id !== playerId);
+      const players = await this.repo.getPlayers(room.id);
+      const remainingConnected = players.filter((p) => p.connected && p.id !== playerId);
       if (remainingConnected.length > 0) {
         const newHost = remainingConnected[0];
-        this.repo.updatePlayer(room.id, newHost.id, { isHost: true });
-        this.repo.updatePlayer(room.id, playerId, { isHost: false });
-        this.repo.updateRoom(room.roomCode, { hostId: newHost.id });
+        await this.repo.updatePlayer(room.id, newHost.id, { isHost: true });
+        await this.repo.updatePlayer(room.id, playerId, { isHost: false });
+        await this.repo.updateRoom(room.roomCode, { hostId: newHost.id });
       }
     }
 
-    const updatedPlayers = this.repo.getPlayers(room.id);
+    const updatedPlayers = await this.repo.getPlayers(room.id);
     this.bus.publish(room.roomCode, "PLAYERS_UPDATED", { players: updatedPlayers });
   }
 
   /**
    * Updates game settings (host only).
    */
-  public static updateSettings(roomCode: string, hostPlayerId: string, patch: Partial<GameSettings>): RoomSession {
-    const room = this.repo.findByCode(roomCode);
+  public static async updateSettings(
+    roomCode: string,
+    hostPlayerId: string,
+    patch: Partial<GameSettings>
+  ): Promise<RoomSession> {
+    const room = await this.repo.findByCode(roomCode);
     if (!room) throw new Error("Room not found.");
     if (room.hostId !== hostPlayerId) throw new Error("Only the host can modify settings.");
 
     const updatedSettings = { ...room.settings, ...patch };
-    const updated = this.repo.updateRoom(roomCode, { settings: updatedSettings })!;
+    const updated = (await this.repo.updateRoom(roomCode, { settings: updatedSettings }))!;
 
     this.bus.publish(room.roomCode, "ROOM_UPDATED", { room: updated });
     return updated;
@@ -266,17 +276,21 @@ export class RoomService {
   /**
    * Kicks or removes a player from the room (host only or player leaving).
    */
-  public static kickPlayer(roomCode: string, hostPlayerId: string, targetPlayerId: string): void {
-    const room = this.repo.findByCode(roomCode);
+  public static async kickPlayer(
+    roomCode: string,
+    hostPlayerId: string,
+    targetPlayerId: string
+  ): Promise<void> {
+    const room = await this.repo.findByCode(roomCode);
     if (!room) throw new Error("Room not found.");
     if (room.hostId !== hostPlayerId && hostPlayerId !== targetPlayerId) {
       throw new Error("Only the host can kick players.");
     }
-    const target = this.repo.getPlayer(room.id, targetPlayerId);
+    const target = await this.repo.getPlayer(room.id, targetPlayerId);
     if (!target) return;
 
-    this.repo.removePlayer(room.id, targetPlayerId);
-    const updatedPlayers = this.repo.getPlayers(room.id);
+    await this.repo.removePlayer(room.id, targetPlayerId);
+    const updatedPlayers = await this.repo.getPlayers(room.id);
     this.bus.publish(room.roomCode, "PLAYERS_UPDATED", { players: updatedPlayers });
     this.bus.publish(room.roomCode, "PLAYER_LEFT", {
       playerId: targetPlayerId,

@@ -8,6 +8,7 @@ import {
 import { RealtimeEventBus } from "../events/event-bus";
 import { RoomRepository } from "../repositories/room.repository";
 import { GameplayService } from "./gameplay.service";
+import { getSupabaseClient } from "../../services/supabase/supabase-client";
 
 // Survive Next.js hot-reloads in dev
 const globalForBlame = globalThis as unknown as {
@@ -36,11 +37,11 @@ export class BlameService {
     return globalForBlame.chaosBlames;
   }
 
-  public static submitInfluence(
+  public static async submitInfluence(
     roomCode: string,
     submission: InfluenceSubmission
-  ): void {
-    const room = this.repo.findByCode(roomCode);
+  ): Promise<void> {
+    const room = await this.repo.findByCode(roomCode);
     if (!room) return;
 
     if (!this.influencesByRoom.has(room.id)) {
@@ -48,11 +49,11 @@ export class BlameService {
     }
     this.influencesByRoom.get(room.id)!.push(submission);
 
-    this.repo.updatePlayer(room.id, submission.playerId, { hasSubmittedInfluence: true });
+    await this.repo.updatePlayer(room.id, submission.playerId, { hasSubmittedInfluence: true });
   }
 
-  public static submitBlame(roomCode: string, submission: BlameSubmission): void {
-    const room = this.repo.findByCode(roomCode);
+  public static async submitBlame(roomCode: string, submission: BlameSubmission): Promise<void> {
+    const room = await this.repo.findByCode(roomCode);
     if (!room) return;
 
     if (!this.blamesByRoom.has(room.id)) {
@@ -60,24 +61,40 @@ export class BlameService {
     }
     this.blamesByRoom.get(room.id)!.push(submission);
 
-    this.repo.updatePlayer(room.id, submission.accuserPlayerId, { hasSubmittedBlame: true });
+    await this.repo.updatePlayer(room.id, submission.accuserPlayerId, { hasSubmittedBlame: true });
   }
 
   /**
    * Compiles influence + blame receipts, applies scoring to player stats,
-   * and persists the scores into the repository.
+   * and persists the scores into the repository and Supabase.
    */
-  public static compileReceipts(roomCode: string): {
+  public static async compileReceipts(roomCode: string): Promise<{
     receipts: RoundReceiptsSummary;
     missionResults: import("../../core/types/mission.types").MissionEvaluationResult[];
-  } | null {
-    const room = this.repo.findByCode(roomCode);
+  } | null> {
+    const room = await this.repo.findByCode(roomCode);
     if (!room) return null;
 
-    const resolution = GameplayService.getCurrentResolution(room.id);
+    let resolution = GameplayService.getCurrentResolution(room.id);
+    if (!resolution) {
+      try {
+        const supabase = getSupabaseClient();
+        const { data } = await supabase
+          .from("round_receipts")
+          .select("data")
+          .eq("room_id", room.id)
+          .eq("round_index", room.currentRoundIndex)
+          .maybeSingle();
+        if (data?.data?.resolution) {
+          resolution = data.data.resolution;
+        }
+      } catch {
+        // Ignored
+      }
+    }
     if (!resolution) return null;
 
-    const players = this.repo.getPlayers(room.id);
+    const players = await this.repo.getPlayers(room.id);
     const influences = this.influencesByRoom.get(room.id) || [];
     const blames = this.blamesByRoom.get(room.id) || [];
 
@@ -89,7 +106,7 @@ export class BlameService {
       blames
     );
 
-    // --- FIX: Apply scoring to players after receipts are compiled ---
+    // Apply scoring to players after receipts are compiled
     const consequence = GameplayService.getCurrentConsequence(room.id);
     const isAbsurdConsequence = Boolean(consequence?.isChaosMoment);
     const scoreBreakdowns = ScoringCalculator.calculateRoundScores(
@@ -101,7 +118,7 @@ export class BlameService {
 
     // Evaluate Secret Missions
     const missions = GameplayService.getCurrentMissions(room.id);
-    let missionResults: import('../../core/types/mission.types').MissionEvaluationResult[] = [];
+    let missionResults: import("../../core/types/mission.types").MissionEvaluationResult[] = [];
     if (missions && missions.size > 0) {
       const { MissionEngine } = require("../../core/engine/mission-engine");
       const blameVotesMap: Record<string, string> = {};
@@ -133,7 +150,7 @@ export class BlameService {
       const receipt = receipts.receipts.find((r) => r.playerId === player.id);
       const isBlamed = receipts.mostBlamedPlayerId === player.id;
 
-      this.repo.updatePlayer(room.id, player.id, {
+      await this.repo.updatePlayer(room.id, player.id, {
         stats: {
           ...player.stats,
           totalScore: breakdown.cumulativeScore,

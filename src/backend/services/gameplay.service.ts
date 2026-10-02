@@ -12,7 +12,7 @@ import { RoundVoteResolution } from "../../core/types/vote.types";
 import { ScenarioRegistry } from "../data/scenarios";
 import { RealtimeEventBus } from "../events/event-bus";
 import { RoomRepository } from "../repositories/room.repository";
-// Note: BlameService imported lazily to avoid circular dependency
+import { getSupabaseClient } from "../../services/supabase/supabase-client";
 
 const globalForGameplay = globalThis as unknown as {
   chaosResolutions?: Map<string, RoundVoteResolution>;
@@ -82,24 +82,53 @@ export class GameplayService {
     return globalForGameplay.chaosModifiers;
   }
 
+  /**
+   * Helper to persist round resolution/consequence/receipt to Supabase
+   */
+  private static async persistRoundData(roomId: string, roundIndex: number, patchData: Record<string, any>) {
+    try {
+      const supabase = getSupabaseClient();
+      const { data: existing } = await supabase
+        .from("round_receipts")
+        .select("id, data")
+        .eq("room_id", roomId)
+        .eq("round_index", roundIndex)
+        .maybeSingle();
 
+      if (existing) {
+        await supabase
+          .from("round_receipts")
+          .update({ data: { ...existing.data, ...patchData } })
+          .eq("id", existing.id);
+      } else {
+        await supabase.from("round_receipts").insert({
+          id: crypto.randomUUID(),
+          room_id: roomId,
+          round_index: roundIndex,
+          data: patchData,
+        });
+      }
+    } catch (err) {
+      console.error("[GameplayService] persistRoundData error:", err);
+    }
+  }
 
   /**
    * Starts the game from the lobby into Round 1 Initial Voting.
    */
-  public static startGame(roomCode: string, hostPlayerId: string): RoomSession {
-    const room = this.repo.findByCode(roomCode);
+  public static async startGame(roomCode: string, hostPlayerId: string): Promise<RoomSession> {
+    const room = await this.repo.findByCode(roomCode);
     if (!room) throw new Error("Room not found.");
     if (room.hostId !== hostPlayerId) throw new Error("Only the host can start the game.");
 
-    const players = this.repo.getPlayers(room.id);
+    const players = await this.repo.getPlayers(room.id);
     const minPlayers = room.mode === "couples" ? 2 : room.settings.minPlayers;
     if (players.length < minPlayers) {
       throw new Error(`At least ${minPlayers} players are required to start.`);
     }
 
     const updatedRoom = GameStateMachine.transition(room, "initial_vote", 0);
-    this.repo.saveRoom(updatedRoom);
+    await this.repo.saveRoom(updatedRoom);
 
     // Generate Secret Missions for Round 1
     const scenario = ScenarioRegistry.getById(room.scenarioId) || ScenarioRegistry.getDefaultPartyScenario();
@@ -119,7 +148,7 @@ export class GameplayService {
     // Reset player vote states for Round 1 & assign secret missions
     for (const p of players) {
       const mission = missions.get(p.id) || null;
-      this.repo.updatePlayer(room.id, p.id, {
+      await this.repo.updatePlayer(room.id, p.id, {
         initialVoteOptionId: null,
         finalVoteOptionId: null,
         hasLockedInitialVote: false,
@@ -148,18 +177,18 @@ export class GameplayService {
   /**
    * Player locks their initial secret vote.
    */
-  public static lockInitialVote(roomCode: string, playerId: string, optionId: string): void {
-    const room = this.repo.findByCode(roomCode);
+  public static async lockInitialVote(roomCode: string, playerId: string, optionId: string): Promise<void> {
+    const room = await this.repo.findByCode(roomCode);
     if (!room || room.phase !== "initial_vote") {
       throw new Error("Initial voting is not active.");
     }
 
-    this.repo.updatePlayer(room.id, playerId, {
+    await this.repo.updatePlayer(room.id, playerId, {
       initialVoteOptionId: optionId,
       hasLockedInitialVote: true,
     });
 
-    const players = this.repo.getPlayers(room.id);
+    const players = await this.repo.getPlayers(room.id);
     const lockedCount = players.filter((p) => p.hasLockedInitialVote).length;
     const totalPlayers = players.length;
 
@@ -176,7 +205,7 @@ export class GameplayService {
       const duration = currentRound?.discussionDurationSeconds || room.settings.discussionDurationSeconds || 60;
 
       const updated = GameStateMachine.transition(room, "discussion", duration);
-      this.repo.saveRoom(updated);
+      await this.repo.saveRoom(updated);
 
       this.bus.publish(roomCode, "PHASE_CHANGED", {
         previousPhase: "initial_vote",
@@ -191,13 +220,17 @@ export class GameplayService {
   /**
    * Host extends discussion time (+30s More Chaos button).
    */
-  public static extendDiscussion(roomCode: string, hostPlayerId: string, addSeconds = 30): RoomSession {
-    const room = this.repo.findByCode(roomCode);
+  public static async extendDiscussion(
+    roomCode: string,
+    hostPlayerId: string,
+    addSeconds = 30
+  ): Promise<RoomSession> {
+    const room = await this.repo.findByCode(roomCode);
     if (!room || room.phase !== "discussion") throw new Error("Discussion is not active.");
     if (room.hostId !== hostPlayerId) throw new Error("Only the host can modify discussion time.");
 
     const newDuration = room.phaseDurationSeconds + addSeconds;
-    const updated = this.repo.updateRoom(roomCode, { phaseDurationSeconds: newDuration })!;
+    const updated = (await this.repo.updateRoom(roomCode, { phaseDurationSeconds: newDuration }))!;
 
     this.bus.publish(roomCode, "ROOM_UPDATED", { room: updated });
     return updated;
@@ -206,12 +239,12 @@ export class GameplayService {
   /**
    * Transitions to Final Vote (when discussion ends or host skips).
    */
-  public static transitionToFinalVote(roomCode: string): RoomSession {
-    const room = this.repo.findByCode(roomCode);
+  public static async transitionToFinalVote(roomCode: string): Promise<RoomSession> {
+    const room = await this.repo.findByCode(roomCode);
     if (!room || room.phase !== "discussion") throw new Error("Discussion is not active.");
 
     const updated = GameStateMachine.transition(room, "final_vote", 0);
-    this.repo.saveRoom(updated);
+    await this.repo.saveRoom(updated);
 
     this.bus.publish(roomCode, "PHASE_CHANGED", {
       previousPhase: "discussion",
@@ -227,16 +260,16 @@ export class GameplayService {
   /**
    * Player locks their final vote.
    */
-  public static lockFinalVote(roomCode: string, playerId: string, optionId: string): void {
-    const room = this.repo.findByCode(roomCode);
+  public static async lockFinalVote(roomCode: string, playerId: string, optionId: string): Promise<void> {
+    const room = await this.repo.findByCode(roomCode);
     if (!room || room.phase !== "final_vote") throw new Error("Final voting is not active.");
 
-    const player = this.repo.getPlayer(room.id, playerId);
+    const player = await this.repo.getPlayer(room.id, playerId);
     if (!player) throw new Error("Player not found.");
 
     const isMindChange = player.initialVoteOptionId && player.initialVoteOptionId !== optionId;
 
-    this.repo.updatePlayer(room.id, playerId, {
+    await this.repo.updatePlayer(room.id, playerId, {
       finalVoteOptionId: optionId,
       hasLockedFinalVote: true,
       stats: {
@@ -246,7 +279,7 @@ export class GameplayService {
       },
     });
 
-    const players = this.repo.getPlayers(room.id);
+    const players = await this.repo.getPlayers(room.id);
     const lockedCount = players.filter((p) => p.hasLockedFinalVote).length;
     const totalPlayers = players.length;
 
@@ -258,25 +291,27 @@ export class GameplayService {
 
     // If all final votes locked -> begin the 6-beat staged mystery box reveal!
     if (lockedCount >= totalPlayers && totalPlayers > 0) {
-      this.beginStagedReveal(room);
+      await this.beginStagedReveal(room);
     }
   }
 
   /**
    * Initiates the 6-Beat Staged Mystery Box Reveal.
    */
-  private static beginStagedReveal(room: RoomSession): void {
+  private static async beginStagedReveal(room: RoomSession): Promise<void> {
     const scenario = ScenarioRegistry.getById(room.scenarioId);
     const currentRound = scenario?.rounds[room.currentRoundIndex - 1];
     if (!currentRound) return;
 
-    const players = this.repo.getPlayers(room.id);
+    const players = await this.repo.getPlayers(room.id);
     const resolution = VoteEvaluator.evaluateRound(room.currentRoundIndex, currentRound.options, players);
     this.currentResolutions.set(room.id, resolution);
 
+    await this.persistRoundData(room.id, room.currentRoundIndex, { resolution });
+
     // Transition to Reveal Beat 1: Closed Box
     const updated = GameStateMachine.transition(room, "reveal_beat_1", 0);
-    this.repo.saveRoom(updated);
+    await this.repo.saveRoom(updated);
 
     this.bus.publish(room.roomCode, "REVEAL_RESOLVED", { resolution });
     this.bus.publish(room.roomCode, "PHASE_CHANGED", {
@@ -290,14 +325,31 @@ export class GameplayService {
   /**
    * Advances the reveal beats (1 through 6) and concludes in consequence/blame.
    */
-  public static advanceRevealBeat(roomCode: string, targetBeat: GamePhase): RoomSession {
-    const room = this.repo.findByCode(roomCode);
+  public static async advanceRevealBeat(roomCode: string, targetBeat: GamePhase): Promise<RoomSession> {
+    const room = await this.repo.findByCode(roomCode);
     if (!room) throw new Error("Room not found.");
 
     const updated = GameStateMachine.transition(room, targetBeat, 0);
-    this.repo.saveRoom(updated);
+    await this.repo.saveRoom(updated);
 
-    const resolution = this.currentResolutions.get(room.id);
+    let resolution = this.currentResolutions.get(room.id);
+    if (!resolution) {
+      try {
+        const supabase = getSupabaseClient();
+        const { data } = await supabase
+          .from("round_receipts")
+          .select("data")
+          .eq("room_id", room.id)
+          .eq("round_index", room.currentRoundIndex)
+          .maybeSingle();
+        if (data?.data?.resolution) {
+          resolution = data.data.resolution;
+          this.currentResolutions.set(room.id, resolution!);
+        }
+      } catch {
+        // Ignored
+      }
+    }
 
     if (targetBeat === "consequence" && resolution) {
       const scenario = ScenarioRegistry.getById(room.scenarioId);
@@ -309,7 +361,8 @@ export class GameplayService {
           room.resourceState
         );
         this.currentConsequences.set(room.id, consequenceResult);
-        this.repo.updateRoom(roomCode, { resourceState: consequenceResult.updatedResourceState });
+        await this.persistRoundData(room.id, room.currentRoundIndex, { consequence: consequenceResult });
+        await this.repo.updateRoom(roomCode, { resourceState: consequenceResult.updatedResourceState });
         this.bus.publish(roomCode, "CONSEQUENCE_RESOLVED", consequenceResult);
       }
     }
@@ -320,7 +373,7 @@ export class GameplayService {
       startTimestamp: updated.phaseStartTimestamp,
       durationSeconds: 0,
     });
-    const freshRoom = this.repo.findByCode(roomCode)!;
+    const freshRoom = (await this.repo.findByCode(roomCode))!;
     this.bus.publish(roomCode, "ROOM_UPDATED", { room: freshRoom });
 
     return freshRoom;
@@ -330,9 +383,9 @@ export class GameplayService {
    * Progresses to next round or concludes the game into CHAOS Report.
    */
   public static async nextRound(roomCode: string, hostPlayerId: string): Promise<RoomSession> {
-    const room = this.repo.findByCode(roomCode);
+    const room = await this.repo.findByCode(roomCode);
     if (!room) throw new Error("Room not found.");
-    const player = this.repo.getPlayer(room.id, hostPlayerId);
+    const player = await this.repo.getPlayer(room.id, hostPlayerId);
     const isAuthorized = room.hostId === hostPlayerId || player?.isHost;
     if (!isAuthorized) throw new Error("Only the host can advance rounds.");
 
@@ -341,9 +394,9 @@ export class GameplayService {
 
     if (isGameOver) {
       const updated = GameStateMachine.transition(room, "chaos_report", 0);
-      this.repo.saveRoom(updated);
+      await this.repo.saveRoom(updated);
 
-      const players = this.repo.getPlayers(room.id);
+      const players = await this.repo.getPlayers(room.id);
       const report = TitlesAssigner.assignTitles(room.id, players, 30000 - (room.resourceState.balance ?? 0));
 
       this.bus.publish(roomCode, "GAME_CONCLUDED", { report });
@@ -366,11 +419,11 @@ export class GameplayService {
       "initial_vote",
       0
     );
-    this.repo.saveRoom(updated);
+    await this.repo.saveRoom(updated);
 
     const scenario = ScenarioRegistry.getById(room.scenarioId) || ScenarioRegistry.getDefaultPartyScenario();
     const roundDef = scenario.rounds[nextIndex - 1] || scenario.rounds[0];
-    const players = this.repo.getPlayers(room.id);
+    const players = await this.repo.getPlayers(room.id);
     const missions = MissionEngine.generateMissions(nextIndex, players, roundDef);
     this.currentMissions.set(room.id, missions);
 
@@ -386,7 +439,7 @@ export class GameplayService {
     // Reset player vote states for the new round & assign new secret missions
     for (const p of players) {
       const mission = missions.get(p.id) || null;
-      this.repo.updatePlayer(room.id, p.id, {
+      await this.repo.updatePlayer(room.id, p.id, {
         initialVoteOptionId: null,
         finalVoteOptionId: null,
         hasLockedInitialVote: false,
@@ -402,11 +455,10 @@ export class GameplayService {
     }
 
     // Clean up per-round data from BlameService to avoid contamination
-    // Use dynamic import to break circular dependency
     try {
       const { BlameService } = await import("./blame.service");
       BlameService.clearRoundData(room.id);
-    } catch (e) {
+    } catch {
       // Non-fatal
     }
 
@@ -424,11 +476,11 @@ export class GameplayService {
   /**
    * Triggers a real-time table reaction buzzer during the discussion phase.
    */
-  public static triggerBuzzer(roomCode: string, playerId: string, buzzerType: ReactionBuzzerType): void {
-    const room = this.repo.findByCode(roomCode);
+  public static async triggerBuzzer(roomCode: string, playerId: string, buzzerType: ReactionBuzzerType): Promise<void> {
+    const room = await this.repo.findByCode(roomCode);
     if (!room) return;
 
-    const player = this.repo.getPlayer(room.id, playerId);
+    const player = await this.repo.getPlayer(room.id, playerId);
     if (!player) return;
 
     this.bus.publish(roomCode, "REACTION_BUZZER_FIRED", {
@@ -442,11 +494,11 @@ export class GameplayService {
   /**
    * Triggers a real-time table emoji reaction (floating emoji on everyone's screen).
    */
-  public static triggerEmojiReaction(roomCode: string, playerId: string, emoji: string): void {
-    const room = this.repo.findByCode(roomCode);
+  public static async triggerEmojiReaction(roomCode: string, playerId: string, emoji: string): Promise<void> {
+    const room = await this.repo.findByCode(roomCode);
     if (!room) return;
 
-    const player = this.repo.getPlayer(room.id, playerId);
+    const player = await this.repo.getPlayer(room.id, playerId);
     if (!player) return;
 
     this.bus.publish(roomCode, "TABLE_EMOJI_REACTION", {

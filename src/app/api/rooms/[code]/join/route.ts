@@ -10,7 +10,7 @@ export async function POST(
     const body = await req.json();
     const { playerName, avatar } = body;
 
-    const result = RoomService.joinRoom({
+    const result = await RoomService.joinRoom({
       roomCode: code,
       playerName,
       avatar,

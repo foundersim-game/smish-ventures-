@@ -269,6 +269,91 @@ export default function ChaosMainApp() {
     };
   }, [room?.roomCode, currentPlayer?.id]);
 
+  // Resilient multi-player room state synchronization (cross-serverless fallback)
+  useEffect(() => {
+    if (!room?.roomCode) return;
+
+    let isMounted = true;
+    const interval = setInterval(async () => {
+      try {
+        const fresh = await ApiClient.getRoom(room.roomCode);
+        if (!isMounted) return;
+
+        setPlayers((prev: PlayerSession[]) => {
+          const prevStr = JSON.stringify(
+            prev.map((p: PlayerSession) => ({
+              id: p.id,
+              ready: p.ready,
+              connected: p.connected,
+              v1: p.hasLockedInitialVote,
+              v2: p.hasLockedFinalVote,
+              name: p.name,
+              score: p.stats.totalScore,
+            }))
+          );
+          const freshStr = JSON.stringify(
+            fresh.players.map((p: PlayerSession) => ({
+              id: p.id,
+              ready: p.ready,
+              connected: p.connected,
+              v1: p.hasLockedInitialVote,
+              v2: p.hasLockedFinalVote,
+              name: p.name,
+              score: p.stats.totalScore,
+            }))
+          );
+          return prevStr !== freshStr ? fresh.players : prev;
+        });
+
+        setRoom((prev: RoomSession | null) => {
+          if (!prev) return fresh.room;
+          if (
+            prev.phase !== fresh.room.phase ||
+            prev.currentRoundIndex !== fresh.room.currentRoundIndex ||
+            prev.resourceState.balance !== fresh.room.resourceState.balance ||
+            prev.resourceState.sanity !== fresh.room.resourceState.sanity ||
+            prev.resourceState.chaosScore !== fresh.room.resourceState.chaosScore
+          ) {
+            // Auto transition screen view if room moved out of lobby to gameplay
+            if (fresh.room.phase !== "lobby" && view === "lobby") {
+              setView("gameplay");
+            } else if (fresh.room.phase === "chaos_report" && view !== "chaos_report") {
+              setView("chaos_report");
+            }
+            return fresh.room;
+          }
+          return prev;
+        });
+
+        if (currentPlayer) {
+          const freshMe = fresh.players.find((p: PlayerSession) => p.id === currentPlayer.id);
+          if (freshMe) {
+            setCurrentPlayer((prev: PlayerSession | null) => {
+              if (!prev) return freshMe;
+              if (
+                prev.hasLockedInitialVote !== freshMe.hasLockedInitialVote ||
+                prev.hasLockedFinalVote !== freshMe.hasLockedFinalVote ||
+                prev.initialVoteOptionId !== freshMe.initialVoteOptionId ||
+                prev.finalVoteOptionId !== freshMe.finalVoteOptionId ||
+                JSON.stringify(prev.secretMission) !== JSON.stringify(freshMe.secretMission)
+              ) {
+                return freshMe;
+              }
+              return prev;
+            });
+          }
+        }
+      } catch {
+        // Ignore background polling glitches
+      }
+    }, 1500);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [room?.roomCode, currentPlayer?.id, view]);
+
   // Dynamic Background Music (BGM) synchronization
   useEffect(() => {
     if (!room || view === "home" || view === "mode_select" || view === "scenario_select" || view === "game_settings") {
