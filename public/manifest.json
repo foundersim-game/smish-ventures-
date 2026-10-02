@@ -1,0 +1,22 @@
+{
+  "name": "CHAOS — Make a Decision, Deal with the CHAOS",
+  "short_name": "CHAOS",
+  "description": "A high-energy multiplayer party game for phones.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#090310",
+  "theme_color": "#090310",
+  "icons": [
+    {
+      "src": "/app-icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/app-icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
