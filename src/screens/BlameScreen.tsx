@@ -74,7 +74,10 @@ export const BlameScreen: React.FC<BlameScreenProps> = ({
   };
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col justify-between px-4 pt-5 pb-8 bg-[#080210] select-none overflow-y-auto overflow-x-hidden">
+    <div
+      className="relative min-h-[100dvh] w-full flex flex-col justify-between px-4 pt-5 pb-12 bg-[#080210] select-none overflow-y-auto overflow-x-hidden"
+      style={{ paddingBottom: "max(3rem, env(safe-area-inset-bottom, 28px))" }}
+    >
       {/* Top Header */}
       <TopHeader
         currentRound={room.currentRoundIndex}
@@ -218,42 +221,54 @@ export const BlameScreen: React.FC<BlameScreenProps> = ({
               </div>
             </div>
 
-            {/* Receipts Breakdown List (Shows ALL players) */}
+            {/* Receipts Breakdown List (Shows ALL players, deduplicated) */}
             <div className="w-full mt-3 flex flex-col gap-2">
-              {(receipts?.receipts || []).map((r) => {
-                const player = players.find((p) => p.id === r.playerId);
-                const isYou = r.playerId === currentPlayer.id;
+              {(() => {
+                const seenIds = new Set<string>();
+                const seenNames = new Set<string>();
+                const uniqueReceipts = (receipts?.receipts || []).filter((r) => {
+                  const lower = r.playerName.trim().toLowerCase();
+                  if (seenIds.has(r.playerId) || seenNames.has(lower)) return false;
+                  seenIds.add(r.playerId);
+                  seenNames.add(lower);
+                  return true;
+                });
 
-                return (
-                  <div
-                    key={r.playerId}
-                    className="p-2.5 rounded-2xl bg-[#180A2E]/90 border border-purple-800/50 flex items-center justify-between text-left shadow"
-                  >
-                    <div className="flex items-center gap-2">
-                      <AvatarBadge
-                        name={r.playerName}
-                        avatarKey={player?.avatar}
-                        isYou={isYou}
-                        size="sm"
-                        showLabel={false}
-                      />
-                      <span className="font-display font-black text-xs text-white">
-                        {r.playerName} {isYou ? "(You)" : ""}
-                      </span>
-                    </div>
+                return uniqueReceipts.map((r) => {
+                  const player = players.find((p) => p.id === r.playerId);
+                  const isYou = r.playerId === currentPlayer.id;
 
-                    <div className="flex items-center gap-2 text-[11px]">
-                      <span className="text-red-300 font-bold">
-                        {r.blameVotesReceived} {r.blameVotesReceived === 1 ? "blame" : "blames"}
-                      </span>
-                      <span className="text-gray-500">•</span>
-                      <span className="text-cyan-300 font-bold">
-                        Influenced {r.peopleInfluencedCount}
-                      </span>
+                  return (
+                    <div
+                      key={r.playerId}
+                      className="p-2.5 rounded-2xl bg-[#180A2E]/90 border border-purple-800/50 flex items-center justify-between text-left shadow"
+                    >
+                      <div className="flex items-center gap-2">
+                        <AvatarBadge
+                          name={r.playerName}
+                          avatarKey={player?.avatar}
+                          isYou={isYou}
+                          size="sm"
+                          showLabel={false}
+                        />
+                        <span className="font-display font-black text-xs text-white">
+                          {r.playerName} {isYou ? "(You)" : ""}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-[11px]">
+                        <span className="text-red-300 font-bold">
+                          {r.blameVotesReceived} {r.blameVotesReceived === 1 ? "blame" : "blames"}
+                        </span>
+                        <span className="text-gray-500">•</span>
+                        <span className="text-cyan-300 font-bold">
+                          Influenced {r.peopleInfluencedCount}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                });
+              })()}
             </div>
 
             {/* Secret Mission Outcomes Spotlight */}
@@ -327,7 +342,7 @@ export const BlameScreen: React.FC<BlameScreenProps> = ({
             )}
 
             {/* Next Round CTA */}
-            <div className="w-full mt-4 mb-4">
+            <div className="w-full mt-4 mb-8">
               <button
                 onClick={onNextRound}
                 className="w-full py-4 rounded-3xl bg-gradient-to-r from-[#C026D3] via-[#A21CAF] to-[#701A75] text-white font-display font-black text-base uppercase tracking-wider shadow-[0_8px_30px_rgba(192,38,211,0.6)] border-2 border-pink-400/50 active:scale-98 cursor-pointer flex items-center justify-center gap-1.5"

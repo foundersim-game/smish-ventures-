@@ -42,6 +42,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
   onKickPlayer,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [loadingBot, setLoadingBot] = useState(false);
   const isHost = room.hostId === currentPlayerId;
   const minRequired = room.mode === "couples" ? 2 : (room.settings.minPlayers || 3);
   const targetPlayers =
@@ -49,6 +50,18 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
     (room.mode === "couples" ? 2 : room.settings.maxPlayers);
   const canStart = players.length >= minRequired;
   const emptySlotsCount = Math.max(0, targetPlayers - players.length);
+
+  const handleAddBotClick = async () => {
+    if (loadingBot || !onAddBot) return;
+    setLoadingBot(true);
+    audio.play("click");
+    haptics.trigger("light");
+    try {
+      await onAddBot();
+    } finally {
+      setTimeout(() => setLoadingBot(false), 600);
+    }
+  };
 
   const getJoinUrl = () => {
     if (typeof window === "undefined") return "";
@@ -193,9 +206,9 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
             Array.from({ length: Math.min(emptySlotsCount, 4) }).map((_, idx) => (
               <div
                 key={idx}
-                onClick={isHost && onAddBot ? onAddBot : undefined}
+                onClick={isHost && onAddBot && !loadingBot ? handleAddBotClick : undefined}
                 className={`flex flex-col items-center select-none ${
-                  isHost && onAddBot ? "cursor-pointer active:scale-95" : ""
+                  isHost && onAddBot && !loadingBot ? "cursor-pointer active:scale-95" : "opacity-60"
                 }`}
               >
                 <div className="w-14 h-14 rounded-full border-2 border-dashed border-purple-700/60 bg-purple-950/30 flex items-center justify-center text-purple-400 hover:border-yellow-400 transition-colors">
@@ -206,7 +219,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
                   )}
                 </div>
                 <span className="text-[10px] font-bold text-gray-400 mt-1">
-                  {isHost && onAddBot ? "+ Add Bot" : "Waiting"}
+                  {isHost && onAddBot ? (loadingBot ? "Adding..." : "+ Add Bot") : "Waiting"}
                 </span>
               </div>
             ))}
@@ -216,15 +229,14 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
         {isHost && onAddBot && (
           <div className="mt-3 flex justify-center">
             <button
-              onClick={() => {
-                audio.play("click");
-                haptics.trigger("light");
-                onAddBot();
-              }}
-              className="px-3.5 py-1.5 rounded-full bg-purple-900/50 hover:bg-purple-900/80 border border-purple-500/40 text-purple-200 text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all shadow"
+              disabled={loadingBot}
+              onClick={handleAddBotClick}
+              className={`px-3.5 py-1.5 rounded-full bg-purple-900/50 hover:bg-purple-900/80 border border-purple-500/40 text-purple-200 text-xs font-bold flex items-center gap-1.5 transition-all shadow ${
+                loadingBot ? "opacity-50 cursor-not-allowed" : "active:scale-95"
+              }`}
             >
               <Bot className="w-3.5 h-3.5 text-yellow-400" />
-              <span>+ Add AI / Demo Player</span>
+              <span>{loadingBot ? "Adding Player..." : "+ Add AI / Demo Player"}</span>
             </button>
           </div>
         )}

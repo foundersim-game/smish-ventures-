@@ -37,6 +37,57 @@ export class BlameService {
     return globalForBlame.chaosBlames;
   }
 
+  private static async persistToDatabase(
+    roomId: string,
+    roundIndex: number,
+    key: "influences" | "blames",
+    item: any
+  ): Promise<void> {
+    try {
+      const supabase = getSupabaseClient();
+      const { data: existing } = await supabase
+        .from("round_receipts")
+        .select("id, data")
+        .eq("room_id", roomId)
+        .eq("round_index", roundIndex)
+        .maybeSingle();
+
+      const currentData = existing?.data || {};
+      const currentList: any[] = Array.isArray(currentData[key]) ? currentData[key] : [];
+
+      // Avoid duplicates
+      const exists = currentList.some((existingItem: any) => {
+        if (key === "influences") {
+          return existingItem.playerId === item.playerId;
+        } else {
+          return existingItem.accuserPlayerId === item.accuserPlayerId;
+        }
+      });
+
+      if (!exists) {
+        currentList.push(item);
+      }
+
+      const updatedData = { ...currentData, [key]: currentList };
+
+      if (existing) {
+        await supabase
+          .from("round_receipts")
+          .update({ data: updatedData })
+          .eq("id", existing.id);
+      } else {
+        await supabase.from("round_receipts").insert({
+          id: crypto.randomUUID(),
+          room_id: roomId,
+          round_index: roundIndex,
+          data: updatedData,
+        });
+      }
+    } catch (err) {
+      console.error(`[BlameService] Error persisting ${key} to Supabase:`, err);
+    }
+  }
+
   public static async submitInfluence(
     roomCode: string,
     submission: InfluenceSubmission
@@ -47,8 +98,16 @@ export class BlameService {
     if (!this.influencesByRoom.has(room.id)) {
       this.influencesByRoom.set(room.id, []);
     }
-    this.influencesByRoom.get(room.id)!.push(submission);
 
+    const list = this.influencesByRoom.get(room.id)!;
+    const existingIdx = list.findIndex((i) => i.playerId === submission.playerId);
+    if (existingIdx >= 0) {
+      list[existingIdx] = submission;
+    } else {
+      list.push(submission);
+    }
+
+    await this.persistToDatabase(room.id, room.currentRoundIndex, "influences", submission);
     await this.repo.updatePlayer(room.id, submission.playerId, { hasSubmittedInfluence: true });
   }
 
@@ -59,8 +118,16 @@ export class BlameService {
     if (!this.blamesByRoom.has(room.id)) {
       this.blamesByRoom.set(room.id, []);
     }
-    this.blamesByRoom.get(room.id)!.push(submission);
 
+    const list = this.blamesByRoom.get(room.id)!;
+    const existingIdx = list.findIndex((b) => b.accuserPlayerId === submission.accuserPlayerId);
+    if (existingIdx >= 0) {
+      list[existingIdx] = submission;
+    } else {
+      list.push(submission);
+    }
+
+    await this.persistToDatabase(room.id, room.currentRoundIndex, "blames", submission);
     await this.repo.updatePlayer(room.id, submission.accuserPlayerId, { hasSubmittedBlame: true });
   }
 
@@ -75,42 +142,144 @@ export class BlameService {
     const room = await this.repo.findByCode(roomCode);
     if (!room) return null;
 
-    let resolution = GameplayService.getCurrentResolution(room.id);
-    if (!resolution) {
-      try {
-        const supabase = getSupabaseClient();
-        const { data } = await supabase
-          .from("round_receipts")
-          .select("data")
-          .eq("room_id", room.id)
-          .eq("round_index", room.currentRoundIndex)
-          .maybeSingle();
-        if (data?.data?.resolution) {
-          resolution = data.data.resolution;
-        }
-      } catch {
-        // Ignored
+    // Fetch existing stored data from Supabase round_receipts
+    let dbData: any = {};
+    try {
+      const supabase = getSupabaseClient();
+      const { data: dbReceiptRow } = await supabase
+        .from("round_receipts")
+        .select("data")
+        .eq("room_id", room.id)
+        .eq("round_index", room.currentRoundIndex)
+        .maybeSingle();
+
+      if (dbReceiptRow?.data) {
+        dbData = dbReceiptRow.data;
       }
+    } catch (err) {
+      console.error("[BlameService] Error loading round_receipts from Supabase:", err);
+    }
+
+    let resolution = GameplayService.getCurrentResolution(room.id);
+    if (!resolution && dbData?.resolution) {
+      resolution = dbData.resolution;
     }
     if (!resolution) return null;
 
     const players = await this.repo.getPlayers(room.id);
-    const influences = this.influencesByRoom.get(room.id) || [];
-    const blames = this.blamesByRoom.get(room.id) || [];
+
+    // Merge in-memory and Supabase influences
+    const memoryInfluences = this.influencesByRoom.get(room.id) || [];
+    const dbInfluences: InfluenceSubmission[] = Array.isArray(dbData.influences) ? dbData.influences : [];
+    const influenceMap = new Map<string, InfluenceSubmission>();
+
+    for (const inf of dbInfluences) {
+      influenceMap.set(inf.playerId, inf);
+    }
+    for (const inf of memoryInfluences) {
+      influenceMap.set(inf.playerId, inf);
+    }
+
+    // --- FIX FOR "INFLUENCED 0": Auto-attribute influence for all mind changes ---
+    // If a player or bot changed their mind during discussion and no explicit influence submission exists,
+    // attribute influence to the advocates of their final choice (those who initially voted for that choice)!
+    const mindChanges = resolution.mindChanges || [];
+    for (const mc of mindChanges) {
+      if (!influenceMap.has(mc.playerId)) {
+        // Who initially voted for the option this player switched to?
+        const advocates = players.filter(
+          (p) => p.id !== mc.playerId && p.initialVoteOptionId === mc.finalOptionId
+        );
+        const candidates = advocates.length > 0 ? advocates : players.filter((p) => p.id !== mc.playerId);
+
+        if (candidates.length > 0) {
+          // Select an advocate
+          const chosenAdvocate = candidates[Math.floor(Math.random() * candidates.length)];
+          const generatedInf: InfluenceSubmission = {
+            playerId: mc.playerId,
+            roundIndex: room.currentRoundIndex,
+            influencedByPlayerId: chosenAdvocate.id,
+            reason: "player",
+          };
+          influenceMap.set(mc.playerId, generatedInf);
+          await this.persistToDatabase(room.id, room.currentRoundIndex, "influences", generatedInf);
+        }
+      }
+    }
+
+    const influences = Array.from(influenceMap.values());
+
+    // Merge in-memory and Supabase blames
+    const memoryBlames = this.blamesByRoom.get(room.id) || [];
+    const dbBlames: BlameSubmission[] = Array.isArray(dbData.blames) ? dbData.blames : [];
+    const blameMap = new Map<string, BlameSubmission>();
+
+    for (const b of dbBlames) {
+      blameMap.set(b.accuserPlayerId, b);
+    }
+    for (const b of memoryBlames) {
+      blameMap.set(b.accuserPlayerId, b);
+    }
+
+    // Auto-cast blame for bot players if they haven't cast blame yet
+    for (const p of players) {
+      if (!blameMap.has(p.id) && !p.isHost) {
+        const candidates = players.filter((c) => c.id !== p.id);
+        if (candidates.length > 0) {
+          const target = candidates[Math.floor(Math.random() * candidates.length)];
+          const botBlame: BlameSubmission = {
+            accuserPlayerId: p.id,
+            roundIndex: room.currentRoundIndex,
+            blamedPlayerId: target.id,
+          };
+          blameMap.set(p.id, botBlame);
+          await this.persistToDatabase(room.id, room.currentRoundIndex, "blames", botBlame);
+        }
+      }
+    }
+
+    const blames = Array.from(blameMap.values());
+
+    // Deduplicate players list before compiling to eliminate duplicate avatars/names
+    const uniquePlayers: typeof players = [];
+    const seenPlayerNames = new Set<string>();
+    const seenPlayerIds = new Set<string>();
+
+    for (const p of players) {
+      const lower = p.name.trim().toLowerCase();
+      if (!seenPlayerIds.has(p.id) && !seenPlayerNames.has(lower)) {
+        seenPlayerIds.add(p.id);
+        seenPlayerNames.add(lower);
+        uniquePlayers.push(p);
+      }
+    }
 
     const receipts = InfluenceEngine.compileReceipts(
       room.currentRoundIndex,
-      players,
-      resolution.mindChanges,
+      uniquePlayers,
+      mindChanges,
       influences,
       blames
     );
 
+    // Filter receipts array to ensure no duplicate entries exist in the breakdown list
+    const seenReceiptIds = new Set<string>();
+    const seenReceiptNames = new Set<string>();
+    receipts.receipts = receipts.receipts.filter((r) => {
+      const lower = r.playerName.trim().toLowerCase();
+      if (seenReceiptIds.has(r.playerId) || seenReceiptNames.has(lower)) {
+        return false;
+      }
+      seenReceiptIds.add(r.playerId);
+      seenReceiptNames.add(lower);
+      return true;
+    });
+
     // Apply scoring to players after receipts are compiled
-    const consequence = GameplayService.getCurrentConsequence(room.id);
+    const consequence = GameplayService.getCurrentConsequence(room.id) || dbData?.consequence;
     const isAbsurdConsequence = Boolean(consequence?.isChaosMoment);
     const scoreBreakdowns = ScoringCalculator.calculateRoundScores(
-      players,
+      uniquePlayers,
       resolution,
       receipts,
       isAbsurdConsequence
@@ -127,7 +296,7 @@ export class BlameService {
       }
       missionResults = MissionEngine.evaluateMissions(
         missions,
-        players,
+        uniquePlayers,
         resolution,
         receipts,
         blameVotesMap
@@ -143,7 +312,7 @@ export class BlameService {
     }
 
     // Persist score and stats to each player
-    for (const player of players) {
+    for (const player of uniquePlayers) {
       const breakdown = scoreBreakdowns[player.id];
       if (!breakdown) continue;
 
@@ -159,6 +328,42 @@ export class BlameService {
           timesBlamed: player.stats.timesBlamed + (isBlamed ? 1 : 0),
         },
       });
+    }
+
+    // Persist compiled receipts to Supabase round_receipts
+    try {
+      const supabase = getSupabaseClient();
+      const { data: existing } = await supabase
+        .from("round_receipts")
+        .select("id, data")
+        .eq("room_id", room.id)
+        .eq("round_index", room.currentRoundIndex)
+        .maybeSingle();
+
+      const fullData = {
+        ...(existing?.data || {}),
+        receipts,
+        scoreBreakdowns,
+        missionResults,
+        influences,
+        blames,
+      };
+
+      if (existing) {
+        await supabase
+          .from("round_receipts")
+          .update({ data: fullData })
+          .eq("id", existing.id);
+      } else {
+        await supabase.from("round_receipts").insert({
+          id: crypto.randomUUID(),
+          room_id: room.id,
+          round_index: room.currentRoundIndex,
+          data: fullData,
+        });
+      }
+    } catch (err) {
+      console.error("[BlameService] Error persisting compiled receipts to Supabase:", err);
     }
 
     // Broadcast the compiled receipts, scores, and mission results

@@ -137,10 +137,15 @@ export class RoomService {
     const playerId = crypto.randomUUID();
     const now = Date.now();
 
+    const requestedName = params.playerName.trim() || `Player ${existingPlayers.length + 1}`;
+    const nameLower = requestedName.toLowerCase();
+    const isDuplicate = existingPlayers.some((p) => p.name.trim().toLowerCase() === nameLower);
+    const finalPlayerName = isDuplicate ? `${requestedName} (${existingPlayers.length + 1})` : requestedName;
+
     const player: PlayerSession = {
       id: playerId,
       roomId: room.id,
-      name: params.playerName.trim() || `Player ${existingPlayers.length + 1}`,
+      name: finalPlayerName,
       avatar: params.avatar || "sunglasses",
       isHost: false,
       connected: true,
@@ -195,16 +200,25 @@ export class RoomService {
     if (!room) throw new Error("Room not found");
     const existingPlayers = await this.repo.getPlayers(room.id);
 
-    const usedNames = new Set(existingPlayers.map((p) => p.name));
-    const candidate = defaultBots.find((b) => !usedNames.has(b.name)) || {
-      name: `Player ${existingPlayers.length + 1}`,
-      avatar: "sunglasses" as AvatarKey,
-    };
+    const usedNames = new Set(existingPlayers.map((p) => p.name.trim().toLowerCase()));
+    let candidateName = botName?.trim();
+    let candidateAvatar = botAvatar;
+
+    if (!candidateName || usedNames.has(candidateName.toLowerCase())) {
+      const unusedBot = defaultBots.find((b) => !usedNames.has(b.name.toLowerCase()));
+      if (unusedBot) {
+        candidateName = unusedBot.name;
+        candidateAvatar = candidateAvatar || unusedBot.avatar;
+      } else {
+        candidateName = `Player ${existingPlayers.length + 1}`;
+        candidateAvatar = candidateAvatar || ("sunglasses" as AvatarKey);
+      }
+    }
 
     return await this.joinRoom({
       roomCode,
-      playerName: botName || candidate.name,
-      avatar: botAvatar || candidate.avatar,
+      playerName: candidateName,
+      avatar: candidateAvatar || ("sunglasses" as AvatarKey),
     });
   }
 

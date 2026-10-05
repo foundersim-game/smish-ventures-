@@ -173,7 +173,10 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
   };
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col justify-between px-5 pt-8 pb-6 bg-[#080210] select-none overflow-x-hidden">
+    <div
+      className="relative min-h-[100dvh] w-full flex flex-col justify-between px-4 pt-5 pb-12 bg-[#080210] select-none overflow-y-auto overflow-x-hidden"
+      style={{ paddingBottom: "max(3rem, env(safe-area-inset-bottom, 28px))" }}
+    >
       {/* Top Header (Screen Reveal End) */}
       <TopHeader
         currentRound={room.currentRoundIndex}
@@ -477,7 +480,7 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
             </div>
 
             {/* Glowing Magenta Pill Button: NEXT ROUND (Screen Reveal End) */}
-            <div className="w-full mt-3">
+            <div className="w-full mt-3 mb-6">
               <button
                 onClick={handleNextRoundClick}
                 className="w-full py-4 rounded-3xl bg-gradient-to-r from-[#C026D3] via-[#A21CAF] to-[#701A75] text-white font-display font-black text-sm uppercase tracking-wider shadow-[0_8px_30px_rgba(192,38,211,0.6)] border-2 border-pink-400/50 active:scale-[0.98] transition-transform cursor-pointer"
