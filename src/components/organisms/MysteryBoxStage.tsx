@@ -51,10 +51,10 @@ export const MysteryBoxStage: React.FC<MysteryBoxStageProps> = ({
     }
   }, [phase]);
 
-  const winningId = resolution?.winningOptionId || "B";
-  const winningLabel = resolution?.winningOptionLabel || "Go clubbing";
-  const winningVotes = resolution?.voteTally[winningId]?.voteCount || 4;
-  const totalVotes = resolution?.totalVotes || 6;
+  const winningId = resolution?.winningOptionId || "A";
+  const winningLabel = resolution?.winningOptionLabel || "Decision Locked";
+  const winningVotes = resolution?.voteTally?.[winningId]?.voteCount ?? 0;
+  const totalVotes = resolution?.totalVotes || 0;
 
   const maxVoteCount = Math.max(
     ...Object.values(resolution?.voteTally || {}).map((t) => t.voteCount),

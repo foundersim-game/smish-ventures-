@@ -139,10 +139,11 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
     D: "bg-[#C084FC] text-white",
   };
 
-  const winningId = resolution.winningOptionId || "B";
-  const winningLabel = resolution.winningOptionLabel || "Go clubbing";
-  const winningVotes = resolution.voteTally[winningId]?.voteCount || 4;
-  const totalVotes = resolution.totalVotes || 6;
+  const winningId = resolution.winningOptionId || options[0]?.id || "A";
+  const winningOpt = options.find((o) => o.id === winningId);
+  const winningLabel = resolution.winningOptionLabel || winningOpt?.label || options[0]?.label || "Decision Locked";
+  const winningVotes = resolution.voteTally?.[winningId]?.voteCount ?? 0;
+  const totalVotes = resolution.totalVotes || players.length;
 
   // Robust tie detection: reads resolution.isTie or inspects voteTally directly
   const maxVoteCount = Math.max(

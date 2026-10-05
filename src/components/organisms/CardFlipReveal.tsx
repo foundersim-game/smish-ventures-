@@ -11,8 +11,8 @@ interface CardFlipRevealProps {
 export const CardFlipReveal: React.FC<CardFlipRevealProps> = ({
   isFlipped,
   isShaking,
-  winningOptionId = "B",
-  winningOptionLabel = "Go clubbing",
+  winningOptionId = "A",
+  winningOptionLabel = "Decision Locked",
   isTie = false,
 }) => {
   return (

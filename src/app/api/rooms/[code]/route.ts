@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { RoomRepository } from "../../../../backend/repositories/room.repository";
 import { RoomService } from "../../../../backend/services/room.service";
 import { ScenarioRegistry } from "../../../../backend/data/scenarios";
+import { GameplayService } from "../../../../backend/services/gameplay.service";
+import { getSupabaseClient } from "../../../../services/supabase/supabase-client";
+import { VoteEvaluator } from "../../../../core/engine/vote-evaluator";
 
 export async function GET(
   req: Request,
@@ -18,11 +21,46 @@ export async function GET(
   const players = await repo.getPlayers(room.id);
   const scenario = ScenarioRegistry.getById(room.scenarioId);
 
+  let resolution: any = GameplayService.getCurrentResolution(room.id) || null;
+  let consequence: any = GameplayService.getCurrentConsequence(room.id) || null;
+
+  if (!resolution || !consequence) {
+    try {
+      const supabase = getSupabaseClient();
+      const { data: dbData } = await supabase
+        .from("round_receipts")
+        .select("data")
+        .eq("room_id", room.id)
+        .eq("round_index", room.currentRoundIndex)
+        .maybeSingle();
+
+      if (dbData?.data) {
+        if (!resolution && dbData.data.resolution) resolution = dbData.data.resolution;
+        if (!consequence && dbData.data.consequence) consequence = dbData.data.consequence;
+      }
+    } catch {
+      // Ignored
+    }
+  }
+
+  // If in reveal/consequence/blame phase and resolution is not set, dynamically evaluate from actual round options and players
+  if (
+    !resolution &&
+    (room.phase.startsWith("reveal_") || room.phase === "consequence" || room.phase === "blame")
+  ) {
+    const currentRound = scenario?.rounds[room.currentRoundIndex - 1];
+    if (currentRound && players.length > 0) {
+      resolution = VoteEvaluator.evaluateRound(room.currentRoundIndex, currentRound.options, players);
+    }
+  }
+
   return NextResponse.json({
     success: true,
     room,
     players,
     scenario,
+    resolution,
+    consequence,
   });
 }
 

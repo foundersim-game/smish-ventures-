@@ -1,306 +1,961 @@
 "use client";
 
-import React, { useEffect } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect, useRef } from "react";
+import { GameMode, GamePhase, GameSettings, RoomSession } from "../core/types/room.types";
+import { AvatarKey, PlayerSession } from "../core/types/player.types";
+import { ScenarioDefinition } from "../core/types/scenario.types";
+import { RoundVoteResolution } from "../core/types/vote.types";
+import { ChaosReportSummary } from "../core/types/scoring.types";
+import { ChaosModifier } from "../core/types/chaos-events.types";
+import { MissionEvaluationResult } from "../core/types/mission.types";
+import { ScenarioRegistry } from "../backend/data/scenarios";
+import { PlayerStorage } from "../services/storage/player-storage";
+import { ApiClient } from "../services/network/api-client";
+import { VoteEvaluator } from "../core/engine/vote-evaluator";
+import { audio } from "../services/audio/audio-manager";
+import { haptics } from "../services/haptics/haptics-manager";
 
-export default function StudioHomePage() {
-  const router = useRouter();
+import { HomeScreen } from "../screens/HomeScreen";
+import { JoinScreen } from "../screens/JoinScreen";
+import { ModeSelectScreen } from "../screens/ModeSelectScreen";
+import { ScenarioSelectScreen } from "../screens/ScenarioSelectScreen";
+import { GameSettingsScreen } from "../screens/GameSettingsScreen";
+import { LobbyScreen } from "../screens/LobbyScreen";
+import { InitialVoteScreen } from "../screens/InitialVoteScreen";
+import { DiscussionScreen } from "../screens/DiscussionScreen";
+import { FinalVoteScreen } from "../screens/FinalVoteScreen";
+import { RevealScreen } from "../screens/RevealScreen";
+import { InfluenceScreen } from "../screens/InfluenceScreen";
+import { ConsequenceScreen } from "../screens/ConsequenceScreen";
+import { BlameScreen } from "../screens/BlameScreen";
+import { ChaosReportScreen } from "../screens/ChaosReportScreen";
+import {
+  LiveReactionOverlay,
+  FloatingEmoji,
+  BuzzerAlert,
+} from "../components/organisms/LiveReactionOverlay";
+import { ReactionBuzzerType } from "../core/types/events.types";
+import { RoundReceiptsSummary } from "../core/types/influence.types";
 
-  // If a join code is in the query params (e.g. ?join=ABCD), redirect directly to /chaos?join=ABCD
+type ViewState =
+  | "home"
+  | "join"
+  | "mode_select"
+  | "scenario_select"
+  | "game_settings"
+  | "lobby"
+  | "gameplay"
+  | "chaos_report";
+
+export default function ChaosMainApp() {
+  const [view, setView] = useState<ViewState>("home");
+  const [selectedMode, setSelectedMode] = useState<GameMode>("party");
+  const [selectedScenario, setSelectedScenario] = useState<ScenarioDefinition>(
+    ScenarioRegistry.getDefaultPartyScenario()
+  );
+
+  const [room, setRoom] = useState<RoomSession | null>(null);
+  const [players, setPlayers] = useState<PlayerSession[]>([]);
+  const [currentPlayer, setCurrentPlayer] = useState<PlayerSession | null>(null);
+  const [resolution, setResolution] = useState<RoundVoteResolution | null>(null);
+  const [receipts, setReceipts] = useState<RoundReceiptsSummary | null>(null);
+  const [chaosReport, setChaosReport] = useState<ChaosReportSummary | null>(null);
+  const [consequenceData, setConsequenceData] = useState<{
+    consequence: { title: string; narrative: string };
+    updatedResourceState: Record<string, number>;
+    isChaosMoment: boolean;
+    chaosMomentMessage: string | null;
+  } | null>(null);
+  const [scoreBreakdowns, setScoreBreakdowns] = useState<
+    Record<string, import("../core/types/scoring.types").PlayerScoreBreakdown>
+  >({});
+  const [missionResults, setMissionResults] = useState<MissionEvaluationResult[]>([]);
+
+  // Live Overlays & Events State
+  const [floatingEmojis, setFloatingEmojis] = useState<FloatingEmoji[]>([]);
+  const [buzzerAlert, setBuzzerAlert] = useState<BuzzerAlert | null>(null);
+  const [activeModifier, setActiveModifier] = useState<ChaosModifier | null>(null);
+  const [joinToast, setJoinToast] = useState<string | null>(null);
+  const [prefilledJoinCode, setPrefilledJoinCode] = useState("");
+
+  const eventSourceRef = useRef<EventSource | null>(null);
+
+  // Initialize profile & detect URL join query (?join=ABCD)
   useEffect(() => {
+    const profile = PlayerStorage.getProfile();
+    setCurrentPlayer({
+      id: "local_player",
+      roomId: "",
+      name: profile.name,
+      avatar: profile.avatar,
+      isHost: false,
+      connected: true,
+      ready: true,
+      initialVoteOptionId: null,
+      finalVoteOptionId: null,
+      hasLockedInitialVote: false,
+      hasLockedFinalVote: false,
+      hasSubmittedInfluence: false,
+      hasSubmittedBlame: false,
+      secretIntel: null,
+      secretMission: null,
+      stats: {
+        decisionsMade: 0,
+        mindChanges: 0,
+        timesInfluencedOthers: 0,
+        timesBlamed: 0,
+        totalScore: 0,
+      },
+      joinedAt: Date.now(),
+      lastSeenAt: Date.now(),
+    });
+
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      const joinCode = params.get("join");
-      if (joinCode) {
-        router.replace(`/chaos?join=${encodeURIComponent(joinCode)}`);
+      const code = params.get("join");
+      if (code) {
+        setPrefilledJoinCode(code.toUpperCase());
+        setView("join");
       }
     }
-  }, [router]);
+  }, []);
+
+  // Realtime SSE Event Listener
+  useEffect(() => {
+    if (!room?.roomCode) {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      return;
+    }
+
+    const sse = new EventSource(`/api/rooms/${room.roomCode}/events`);
+    eventSourceRef.current = sse;
+
+    sse.addEventListener("ROOM_UPDATED", (e) => {
+      const data = JSON.parse(e.data);
+      setRoom(data.room);
+    });
+
+    sse.addEventListener("PLAYERS_UPDATED", (e) => {
+      const data = JSON.parse(e.data);
+      setPlayers(data.players);
+      if (currentPlayer) {
+        const me = data.players.find((p: PlayerSession) => p.id === currentPlayer.id);
+        if (me) setCurrentPlayer(me);
+      }
+    });
+
+    sse.addEventListener("PLAYER_JOINED", (e) => {
+      const data = JSON.parse(e.data);
+      setJoinToast(`🎉 ${data.player.name} joined the party!`);
+      audio.play("click");
+      setTimeout(() => setJoinToast(null), 3000);
+    });
+
+    sse.addEventListener("PLAYER_LEFT", (e) => {
+      const data = JSON.parse(e.data);
+      setJoinToast(`👋 ${data.playerName} left the party.`);
+      setTimeout(() => setJoinToast(null), 3000);
+    });
+
+    sse.addEventListener("CHAOS_MODIFIER_TRIGGERED", (e) => {
+      const data = JSON.parse(e.data);
+      setActiveModifier(data.modifier);
+      audio.play("fanfare");
+      haptics.trigger("chaos_moment");
+    });
+
+    sse.addEventListener("SECRET_MISSION_ASSIGNED", (e) => {
+      const data = JSON.parse(e.data);
+      if (currentPlayer && data.playerId === currentPlayer.id) {
+        setCurrentPlayer((prev) => (prev ? { ...prev, secretMission: data.mission } : prev));
+      }
+    });
+
+    sse.addEventListener("REACTION_BUZZER_FIRED", (e) => {
+      const data = JSON.parse(e.data);
+      const titleMap = {
+        bullshit: "BULLSHIT! 🚨",
+        cap: "CAP! 🧢",
+        not_moving: "NO MOVE! 🧱",
+      };
+      const bgMap = {
+        bullshit: "bg-red-900/90",
+        cap: "bg-amber-900/90",
+        not_moving: "bg-purple-900/90",
+      };
+      const iconMap = {
+        bullshit: "🚨",
+        cap: "🧢",
+        not_moving: "🧱",
+      };
+
+      setBuzzerAlert({
+        id: String(Date.now()),
+        playerName: data.playerName,
+        buzzerType: data.buzzerType,
+        title: titleMap[data.buzzerType as ReactionBuzzerType] || "BUZZER!",
+        icon: iconMap[data.buzzerType as ReactionBuzzerType] || "🚨",
+        bgColor: bgMap[data.buzzerType as ReactionBuzzerType] || "bg-red-900/90",
+      });
+
+      if (data.buzzerType === "bullshit") audio.play("buzzer_bullshit");
+      else if (data.buzzerType === "cap") audio.play("buzzer_cap");
+      else audio.play("buzzer_anvil");
+
+      haptics.trigger("heavy");
+      setTimeout(() => setBuzzerAlert(null), 3500);
+    });
+
+    sse.addEventListener("TABLE_EMOJI_REACTION", (e) => {
+      const data = JSON.parse(e.data);
+      const newEmoji: FloatingEmoji = {
+        id: `${Date.now()}_${Math.random()}`,
+        emoji: data.emoji,
+        senderName: data.playerName,
+        avatar: data.avatar,
+        xPercent: 15 + Math.random() * 65,
+      };
+      setFloatingEmojis((prev) => [...prev, newEmoji]);
+      setTimeout(() => {
+        setFloatingEmojis((prev) => prev.filter((item) => item.id !== newEmoji.id));
+      }, 2500);
+    });
+
+    sse.addEventListener("PHASE_CHANGED", (e) => {
+      const data = JSON.parse(e.data);
+      setRoom((prev) => (prev ? { ...prev, phase: data.newPhase } : prev));
+      if (data.newPhase === "initial_vote") {
+        setReceipts(null);
+        setMissionResults([]);
+        setConsequenceData(null);
+        setResolution(null);
+      }
+      if (data.newPhase === "chaos_report") {
+        setView("chaos_report");
+      }
+    });
+
+    sse.addEventListener("REVEAL_RESOLVED", (e) => {
+      const data = JSON.parse(e.data);
+      setResolution(data.resolution);
+    });
+
+    sse.addEventListener("CONSEQUENCE_RESOLVED", (e) => {
+      const data = JSON.parse(e.data);
+      setConsequenceData(data);
+      setRoom((prev) => (prev ? { ...prev, resourceState: data.updatedResourceState } : prev));
+    });
+
+    sse.addEventListener("RECEIPTS_COMPILED", (e) => {
+      const data = JSON.parse(e.data);
+      setReceipts(data.receipts);
+      setScoreBreakdowns(data.scoreBreakdowns || {});
+      if (data.missionResults) {
+        setMissionResults(data.missionResults);
+      }
+    });
+
+    sse.addEventListener("GAME_CONCLUDED", (e) => {
+      const data = JSON.parse(e.data);
+      setChaosReport(data.report);
+      setView("chaos_report");
+    });
+
+    return () => {
+      sse.close();
+      eventSourceRef.current = null;
+    };
+  }, [room?.roomCode, currentPlayer?.id]);
+
+  // Resilient multi-player room state synchronization (cross-serverless fallback)
+  useEffect(() => {
+    if (!room?.roomCode) return;
+
+    let isMounted = true;
+    const interval = setInterval(async () => {
+      try {
+        const fresh = await ApiClient.getRoom(room.roomCode);
+        if (!isMounted) return;
+
+        setPlayers((prev) => {
+          const prevStr = JSON.stringify(
+            prev.map((p) => ({
+              id: p.id,
+              ready: p.ready,
+              connected: p.connected,
+              v1: p.hasLockedInitialVote,
+              v2: p.hasLockedFinalVote,
+              name: p.name,
+              score: p.stats.totalScore,
+            }))
+          );
+          const freshStr = JSON.stringify(
+            fresh.players.map((p) => ({
+              id: p.id,
+              ready: p.ready,
+              connected: p.connected,
+              v1: p.hasLockedInitialVote,
+              v2: p.hasLockedFinalVote,
+              name: p.name,
+              score: p.stats.totalScore,
+            }))
+          );
+          return prevStr !== freshStr ? fresh.players : prev;
+        });
+
+        if (fresh.resolution && !resolution) {
+          setResolution(fresh.resolution);
+        }
+        if (fresh.consequence && !consequenceData) {
+          setConsequenceData(fresh.consequence);
+        }
+
+        setRoom((prev) => {
+          if (!prev) return fresh.room;
+          if (
+            prev.phase !== fresh.room.phase ||
+            prev.currentRoundIndex !== fresh.room.currentRoundIndex ||
+            prev.resourceState.balance !== fresh.room.resourceState.balance ||
+            prev.resourceState.sanity !== fresh.room.resourceState.sanity ||
+            prev.resourceState.chaosScore !== fresh.room.resourceState.chaosScore
+          ) {
+            // Auto transition screen view if room moved out of lobby to gameplay
+            if (fresh.room.phase !== "lobby" && view === "lobby") {
+              setView("gameplay");
+            } else if (fresh.room.phase === "chaos_report" && view !== "chaos_report") {
+              setView("chaos_report");
+            }
+            return fresh.room;
+          }
+          return prev;
+        });
+
+        if (currentPlayer) {
+          const freshMe = fresh.players.find((p) => p.id === currentPlayer.id);
+          if (freshMe) {
+            setCurrentPlayer((prev) => {
+              if (!prev) return freshMe;
+              if (
+                prev.hasLockedInitialVote !== freshMe.hasLockedInitialVote ||
+                prev.hasLockedFinalVote !== freshMe.hasLockedFinalVote ||
+                prev.initialVoteOptionId !== freshMe.initialVoteOptionId ||
+                prev.finalVoteOptionId !== freshMe.finalVoteOptionId ||
+                JSON.stringify(prev.secretMission) !== JSON.stringify(freshMe.secretMission)
+              ) {
+                return freshMe;
+              }
+              return prev;
+            });
+          }
+        }
+      } catch {
+        // Ignore background polling glitches
+      }
+    }, 1500);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [room?.roomCode, currentPlayer?.id, view]);
+
+  // Dynamic Background Music (BGM) synchronization
+  useEffect(() => {
+    if (!room || view === "home" || view === "mode_select" || view === "scenario_select" || view === "game_settings") {
+      audio.stopBGM();
+      return;
+    }
+
+    if (room.phase === "discussion") {
+      audio.playBGM("debate", 0.25);
+    } else if (
+      [
+        "lobby",
+        "initial_vote",
+        "final_vote",
+        "reveal",
+        "influence",
+        "consequence",
+        "round_wrap",
+        "blame",
+        "chaos_report",
+      ].includes(room.phase)
+    ) {
+      audio.playBGM("ambient", 0.2);
+    }
+  }, [room?.phase, view]);
+
+  // Host creates room with their own saved profile
+  const handleStartChaos = async (settings: GameSettings) => {
+    try {
+      const profile = PlayerStorage.getProfile();
+      const res = await ApiClient.createRoom({
+        hostName: profile.name,
+        hostAvatar: profile.avatar,
+        mode: selectedMode,
+        scenarioId: selectedScenario.id,
+        settings,
+      });
+
+      setRoom(res.room);
+      setPlayers([res.host]);
+      setCurrentPlayer(res.host);
+      setView("lobby");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to create game");
+    }
+  };
+
+  // Real player joins via room code
+  const handleJoinRoom = async (code: string, name: string, avatar: AvatarKey) => {
+    const res = await ApiClient.joinRoom(code, name, avatar);
+    setRoom(res.room);
+    setCurrentPlayer(res.player);
+    const updated = await ApiClient.getRoom(code);
+    setPlayers(updated.players);
+    if (updated.scenario) {
+      setSelectedScenario(updated.scenario);
+    }
+    setView("lobby");
+  };
+
+  // Host adds an AI / Demo bot player to the lobby
+  const handleAddBot = async () => {
+    if (!room || !currentPlayer) return;
+    try {
+      await ApiClient.addBotPlayer(room.roomCode, currentPlayer.id);
+      const updated = await ApiClient.getRoom(room.roomCode);
+      setRoom(updated.room);
+      setPlayers(updated.players);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to add bot player");
+    }
+  };
+
+  // Host kicks a player from the lobby
+  const handleKickPlayer = async (targetPlayerId: string) => {
+    if (!room || !currentPlayer) return;
+    try {
+      await ApiClient.kickPlayer(room.roomCode, currentPlayer.id, targetPlayerId);
+      const updated = await ApiClient.getRoom(room.roomCode);
+      setRoom(updated.room);
+      setPlayers(updated.players);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to remove player");
+    }
+  };
+
+  // Host starts game from lobby
+  const handleStartGameFromLobby = async () => {
+    if (!room || !currentPlayer) return;
+    try {
+      await ApiClient.sendAction(room.roomCode, currentPlayer.id, "START_GAME");
+      const updated = await ApiClient.getRoom(room.roomCode);
+      setRoom(updated.room);
+      setPlayers(updated.players);
+      const me = updated.players.find((p) => p.id === currentPlayer.id);
+      if (me) setCurrentPlayer(me);
+      if (updated.scenario) {
+        setSelectedScenario(updated.scenario);
+      }
+      setView("gameplay");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to start");
+    }
+  };
+
+  // Player locks initial vote
+  const handleLockInitialVote = async (optionId: string) => {
+    if (!room || !currentPlayer) return;
+    try {
+      await ApiClient.sendAction(room.roomCode, currentPlayer.id, "LOCK_INITIAL_VOTE", {
+        optionId,
+      });
+
+      const updated = await ApiClient.getRoom(room.roomCode);
+      setRoom(updated.room);
+      setPlayers(updated.players);
+      const me = updated.players.find((p) => p.id === currentPlayer.id);
+      if (me) setCurrentPlayer(me);
+
+      // If playing with bots/squad, simulate remaining bots locking votes with natural pacing
+      setTimeout(async () => {
+        try {
+          const fresh = await ApiClient.getRoom(room.roomCode);
+          for (const p of fresh.players) {
+            if (p.id !== currentPlayer.id && !p.hasLockedInitialVote) {
+              const options = ["A", "B", "C", "D"];
+              const opt = options[Math.floor(Math.random() * options.length)];
+              await ApiClient.sendAction(room.roomCode, p.id, "LOCK_INITIAL_VOTE", {
+                optionId: opt,
+              });
+            }
+          }
+          const allLocked = await ApiClient.getRoom(room.roomCode);
+          setRoom(allLocked.room);
+          setPlayers(allLocked.players);
+          const freshMe = allLocked.players.find((p) => p.id === currentPlayer.id);
+          if (freshMe) setCurrentPlayer(freshMe);
+        } catch (e) {
+          console.error("Error locking bot votes:", e);
+        }
+      }, 1200);
+    } catch (err: unknown) {
+      console.error(err);
+    }
+  };
+
+  // Discussion time expires
+  const handleDiscussionTimeUp = async () => {
+    if (!room || !currentPlayer) return;
+    try {
+      await ApiClient.sendAction(room.roomCode, currentPlayer.id, "SKIP_DISCUSSION");
+      const updated = await ApiClient.getRoom(room.roomCode);
+      setRoom(updated.room);
+    } catch (err: unknown) {
+      console.error(err);
+    }
+  };
+
+  // Player locks final vote
+  const handleLockFinalVote = async (optionId: string) => {
+    if (!room || !currentPlayer) return;
+    try {
+      await ApiClient.sendAction(room.roomCode, currentPlayer.id, "LOCK_FINAL_VOTE", {
+        optionId,
+      });
+
+      const updated = await ApiClient.getRoom(room.roomCode);
+      setRoom(updated.room);
+      setPlayers(updated.players);
+      const me = updated.players.find((p) => p.id === currentPlayer.id);
+      if (me) setCurrentPlayer(me);
+
+      // Simulate bot final votes if any
+      setTimeout(async () => {
+        try {
+          const fresh = await ApiClient.getRoom(room.roomCode);
+          if (fresh.room.phase !== "final_vote") return;
+          for (const p of fresh.players) {
+            if (p.id !== currentPlayer.id && !p.hasLockedFinalVote) {
+              const flipOpt =
+                p.name === "Riya" || p.name === "Karan"
+                  ? "B"
+                  : p.initialVoteOptionId || "B";
+              await ApiClient.sendAction(room.roomCode, p.id, "LOCK_FINAL_VOTE", {
+                optionId: flipOpt,
+              });
+            }
+          }
+          const allLocked = await ApiClient.getRoom(room.roomCode);
+          setRoom(allLocked.room);
+          setPlayers(allLocked.players);
+          if (allLocked.resolution) setResolution(allLocked.resolution);
+          if (allLocked.consequence) setConsequenceData(allLocked.consequence);
+          const freshMe = allLocked.players.find((p) => p.id === currentPlayer.id);
+          if (freshMe) setCurrentPlayer(freshMe);
+        } catch (e) {
+          console.error("Error locking bot final votes:", e);
+        }
+      }, 1200);
+    } catch (err: unknown) {
+      console.error(err);
+    }
+  };
+
+  // Advance reveal beat
+  const handleAdvanceRevealBeat = async (targetBeat: GamePhase) => {
+    if (!room || !currentPlayer) return;
+    try {
+      await ApiClient.sendAction(room.roomCode, currentPlayer.id, "ADVANCE_REVEAL_BEAT", {
+        targetBeat,
+      });
+      const updated = await ApiClient.getRoom(room.roomCode);
+      setRoom(updated.room);
+    } catch (err: unknown) {
+      console.error(err);
+    }
+  };
+
+  // Submit Influence attribution
+  const handleSubmitInfluence = async (targetPlayerId: string | null, reason?: string) => {
+    if (!room || !currentPlayer) return;
+    try {
+      await ApiClient.sendAction(room.roomCode, currentPlayer.id, "SUBMIT_INFLUENCE", {
+        roundIndex: room.currentRoundIndex,
+        influencedByPlayerId: targetPlayerId,
+        reason,
+      });
+
+      // Bots submit their influence
+      for (const p of players) {
+        if (p.id !== currentPlayer.id) {
+          const others = players.filter((o) => o.id !== p.id);
+          const rand = others[Math.floor(Math.random() * others.length)];
+          await ApiClient.sendAction(room.roomCode, p.id, "SUBMIT_INFLUENCE", {
+            roundIndex: room.currentRoundIndex,
+            influencedByPlayerId: rand?.id || null,
+          }).catch(() => {});
+        }
+      }
+
+      const updated = await ApiClient.getRoom(room.roomCode);
+      setRoom(updated.room);
+      setPlayers(updated.players);
+      const me = updated.players.find((p) => p.id === currentPlayer.id);
+      if (me) setCurrentPlayer(me);
+    } catch (err: unknown) {
+      console.error(err);
+    }
+  };
+
+  // Submit Blame nomination
+  const handleSubmitBlame = async (blamedPlayerId: string) => {
+    if (!room || !currentPlayer) return;
+    try {
+      await ApiClient.sendAction(room.roomCode, currentPlayer.id, "SUBMIT_BLAME", {
+        roundIndex: room.currentRoundIndex,
+        blamedPlayerId,
+      });
+
+      // Bots cast blame as well
+      for (const p of players) {
+        if (p.id !== currentPlayer.id) {
+          const targets = players.filter((o) => o.id !== p.id);
+          const rand = targets[Math.floor(Math.random() * targets.length)];
+          await ApiClient.sendAction(room.roomCode, p.id, "SUBMIT_BLAME", {
+            roundIndex: room.currentRoundIndex,
+            blamedPlayerId: rand?.id || currentPlayer.id,
+          }).catch(() => {});
+        }
+      }
+
+      const updated = await ApiClient.getRoom(room.roomCode);
+      setRoom(updated.room);
+      setPlayers(updated.players);
+    } catch (err: unknown) {
+      console.error(err);
+    }
+  };
+
+  // Compile Receipts
+  const handleCompileReceipts = async (): Promise<RoundReceiptsSummary> => {
+    if (!room || !currentPlayer) throw new Error("No active room");
+    const res = await ApiClient.sendAction(room.roomCode, currentPlayer.id, "COMPILE_RECEIPTS");
+    const compiled = res.receipts as RoundReceiptsSummary;
+    setReceipts(compiled);
+    if (res.missionResults && Array.isArray(res.missionResults)) {
+      setMissionResults(res.missionResults);
+    }
+    return compiled;
+  };
+
+  // Next round
+  const handleNextRound = async () => {
+    if (!room || !currentPlayer) return;
+    try {
+      setReceipts(null);
+      setMissionResults([]);
+      setConsequenceData(null);
+      setResolution(null);
+      await ApiClient.sendAction(room.roomCode, currentPlayer.id, "NEXT_ROUND");
+      const updated = await ApiClient.getRoom(room.roomCode);
+      setRoom(updated.room);
+      setPlayers(updated.players);
+      const me = updated.players.find((p) => p.id === currentPlayer.id);
+      if (me) setCurrentPlayer(me);
+      if (updated.room.phase === "chaos_report") {
+        setView("chaos_report");
+      }
+    } catch (err: unknown) {
+      console.error(err);
+    }
+  };
+
+  // Table reaction buzzer
+  const handleBuzzer = async (type: ReactionBuzzerType) => {
+    if (!room || !currentPlayer) return;
+    try {
+      await ApiClient.sendAction(room.roomCode, currentPlayer.id, "TRIGGER_BUZZER", {
+        buzzerType: type,
+      });
+    } catch (err: unknown) {
+      console.error(err);
+    }
+  };
+
+  // Live Floating Emoji Reaction
+  const handleSendEmojiReaction = async (emoji: string) => {
+    if (!room || !currentPlayer) return;
+    try {
+      await ApiClient.sendEmojiReaction(room.roomCode, currentPlayer.id, emoji);
+    } catch (err: unknown) {
+      console.error(err);
+    }
+  };
+
+  const handleLeaveRoom = () => {
+    setRoom(null);
+    setView("home");
+  };
+
+  const currentRound =
+    selectedScenario.rounds[(room?.currentRoundIndex || 1) - 1] || selectedScenario.rounds[0];
 
   return (
-    <div className="relative min-h-screen">
-      <div className="ambient-background"></div>
+    <div className="relative min-h-screen w-full bg-[#06010D] flex items-center justify-center overflow-x-hidden">
+      {/* Studio Ambient Backlights for Desktop */}
+      <div className="fixed -top-40 -left-40 w-96 h-96 bg-purple-600/15 rounded-full blur-[140px] pointer-events-none" />
+      <div className="fixed -bottom-40 -right-40 w-96 h-96 bg-pink-600/15 rounded-full blur-[140px] pointer-events-none" />
 
-      {/* Sticky Navigation Header */}
-      <header className="nav-header">
-        <div className="container nav-inner">
-          <Link href="/" className="brand-logo" aria-label="SMISH Ventures Home">
-            <img src="/assets/logo.png" alt="SMISH Ventures" className="brand-logo-img" />
-          </Link>
-          
-          <nav aria-label="Primary Navigation">
-            <ul className="nav-links">
-              <li><a href="#games" className="active">Games</a></li>
-              <li><a href="#philosophy">Philosophy</a></li>
-              <li><a href="/support">Support</a></li>
-              <li><a href="/privacy">Privacy</a></li>
-              <li>
-                <Link href="/chaos" className="nav-cta" style={{ background: "linear-gradient(135deg, #FF0038, #FF8A00)", border: "none" }}>
-                  Play CHAOS ⚡
-                </Link>
-              </li>
-            </ul>
-          </nav>
-        </div>
-      </header>
+      {/* Main Game Screen Canvas */}
+      <div className="relative min-h-screen w-full max-w-[420px] bg-[#080210] shadow-[0_0_60px_rgba(0,0,0,0.9),0_0_20px_rgba(168,85,247,0.2)] flex flex-col justify-between overflow-x-hidden">
+        {/* Global Floating Reactions & Buzzer Alerts Overlay */}
+        <LiveReactionOverlay
+          floatingEmojis={floatingEmojis}
+          buzzerAlert={buzzerAlert}
+          joinToast={joinToast}
+        />
 
-      <main>
-        {/* Studio Hero */}
-        <section className="hero-section">
-          <div className="container">
-            <div className="hero-pill">
-              <span className="badge badge-gold">Independent Game Studio</span>
-            </div>
-            <h1 className="hero-title">
-              We Build Deep Simulations & <br />
-              <span className="hero-title-highlight">High-Stakes Social Games</span>
-            </h1>
-            <p className="hero-subtitle">
-              No predatory paywalls. No boring wait timers. We craft complex economic simulations and unhinged multiplayer party games that respect your intelligence and spark unforgettable memories.
-            </p>
-            <div className="hero-actions">
-              <Link href="/chaos" className="btn btn-primary" style={{ background: "linear-gradient(135deg, #FF0038 0%, #FFA500 100%)", boxShadow: "0 0 25px rgba(255, 0, 56, 0.4)" }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
-                Play CHAOS Live Online
-              </Link>
-              <a href="#games" className="btn btn-secondary">
-                Explore All Games
-              </a>
-            </div>
-          </div>
-        </section>
+        {/* 1. HOME SCREEN (Screen 1) */}
+        {view === "home" && (
+          <HomeScreen
+            onCreateParty={() => {
+              setSelectedMode("party");
+              setSelectedScenario(ScenarioRegistry.getDefaultPartyScenario());
+              setView("mode_select");
+            }}
+            onJoinParty={() => setView("join")}
+            onCouplesMode={() => {
+              setSelectedMode("couples");
+              setSelectedScenario(ScenarioRegistry.getDefaultCouplesScenario());
+              setView("scenario_select");
+            }}
+          />
+        )}
 
-        {/* Games Showcase */}
-        <section id="games" className="games-section">
-          <div className="container">
-            <div className="section-header">
-              <span className="section-tag">Our Portfolio</span>
-              <h2 className="section-title">Games Crafted by SMISH</h2>
-              <p className="section-desc">From tactical single-player simulations to unhinged multiplayer party games.</p>
-            </div>
+        {/* 2. JOIN GAME SCREEN */}
+        {view === "join" && (
+          <JoinScreen
+            initialCode={prefilledJoinCode}
+            onJoin={handleJoinRoom}
+            onBack={() => setView("home")}
+          />
+        )}
 
-            <div className="games-grid">
-              {/* Game 1: CHAOS Party Game (Featured Flagship) */}
-              <article className="game-card" style={{ gridColumn: "1 / -1", border: "2px solid rgba(255, 0, 56, 0.4)", background: "linear-gradient(180deg, rgba(35, 12, 54, 0.8) 0%, rgba(15, 20, 34, 0.95) 100%)", boxShadow: "0 20px 50px rgba(0,0,0,0.8)" }}>
-                <div className="game-card-banner" style={{ background: "linear-gradient(135deg, #180327 0%, #2A093D 50%, #0A0315 100%)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden", minHeight: "220px" }}>
-                  <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at center, rgba(255,0,56,0.2) 0%, transparent 70%)" }}></div>
-                  <img src="/logo-transparent.png" alt="CHAOS Game Logo" style={{ height: "110px", width: "auto", objectFit: "contain", filter: "drop-shadow(0 0 25px rgba(255,0,56,0.8))" }} />
-                </div>
-                <div className="game-card-body">
-                  <div className="game-header-row">
-                    <img src="/icon.png" alt="CHAOS App Icon" className="game-app-icon" style={{ borderRadius: "20px", border: "2px solid rgba(255, 0, 56, 0.5)" }} />
-                    <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                        <h3 className="game-card-title">CHAOS: The Party Game</h3>
-                        <span className="badge" style={{ background: "rgba(255,0,56,0.2)", color: "#FF4D6D", border: "1px solid rgba(255,0,56,0.4)", fontWeight: 800 }}>NEW RELEASE</span>
-                      </div>
-                      <span className="game-card-genre" style={{ color: "#FCD34D" }}>Real-time Multiplayer Party Game • 4–10 Players</span>
-                    </div>
-                  </div>
-                  <p className="game-card-desc">
-                    A high-stakes party game of bluffing, secrets, and hilarious consequences. Play across 10 connected storyline rounds where every decision changes your squad's fate. Zero installation required—play instantly in your mobile browser with friends.
-                  </p>
-                  <ul className="game-features-list" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "10px" }}>
-                    <li>
-                      <svg width="16" height="16" viewBox="0 0 20 20" fill="#FCD34D"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
-                      10 Connected Storyline Rounds Per Scenario
-                    </li>
-                    <li>
-                      <svg width="16" height="16" viewBox="0 0 20 20" fill="#FCD34D"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
-                      Host Configurable Length (4, 6, 8, or 10 Rounds)
-                    </li>
-                    <li>
-                      <svg width="16" height="16" viewBox="0 0 20 20" fill="#FCD34D"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
-                      Secret Saboteur Missions & Mind-Change Reveals
-                    </li>
-                    <li>
-                      <svg width="16" height="16" viewBox="0 0 20 20" fill="#FCD34D"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
-                      Live Buzzers, BGM & Instant Room Join via QR/Code
-                    </li>
-                  </ul>
-                  <div className="game-card-footer" style={{ marginTop: "18px", borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "14px" }}>
-                    <span className="badge" style={{ background: "rgba(245, 158, 11, 0.2)", color: "#FCD34D", border: "1px solid rgba(245, 158, 11, 0.4)" }}>Live Web App • All Devices</span>
-                    <Link href="/chaos" className="btn btn-primary" style={{ background: "linear-gradient(135deg, #FF0038 0%, #FFA500 100%)", padding: "10px 24px", fontSize: "14px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "1px" }}>
-                      PLAY CHAOS NOW ⚡
-                    </Link>
-                  </div>
-                </div>
-              </article>
+        {/* 3. MODE SELECT SCREEN (Screen 2) */}
+        {view === "mode_select" && (
+          <ModeSelectScreen
+            initialMode={selectedMode}
+            onBack={() => setView("home")}
+            onSelectMode={(mode) => {
+              setSelectedMode(mode);
+              setSelectedScenario(ScenarioRegistry.getDefaultScenarioForMode(mode));
+              setView("scenario_select");
+            }}
+          />
+        )}
 
-              {/* Game 2: Founder Sim */}
-              <article className="game-card">
-                <div className="game-card-banner" style={{ background: "linear-gradient(135deg, #0D2137 0%, #08111D 100%)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <img src="/assets/founder-sim-icon.png" alt="Founder Sim Startup Tycoon" style={{ width: "120px", height: "120px", objectFit: "contain", borderRadius: "24px", boxShadow: "0 12px 30px rgba(0,0,0,0.7)" }} />
-                </div>
-                <div className="game-card-body">
-                  <div className="game-header-row">
-                    <img src="/assets/founder-sim-icon.png" alt="Founder Sim Icon" className="game-app-icon" />
-                    <div>
-                      <h3 className="game-card-title">Founder Sim</h3>
-                      <span className="game-card-genre" style={{ color: "var(--cyan-primary)" }}>Tech Startup Tycoon</span>
-                    </div>
-                  </div>
-                  <p className="game-card-desc">
-                    Experience the relentless rollercoaster of high-stakes venture capital, product-market fit, cap table negotiations, and scaling engineering teams from an unheated apartment to a Silicon Valley IPO.
-                  </p>
-                  <ul className="game-features-list">
-                    <li>
-                      <svg width="16" height="16" viewBox="0 0 20 20" fill="#06B6D4"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
-                      Realistic Seed, Series A/B/C & IPO Milestones
-                    </li>
-                    <li>
-                      <svg width="16" height="16" viewBox="0 0 20 20" fill="#06B6D4"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
-                      Dynamic Burn Rate & Runway Engineering
-                    </li>
-                    <li>
-                      <svg width="16" height="16" viewBox="0 0 20 20" fill="#06B6D4"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
-                      Term Sheet Negotiations & Investor Board Dynamics
-                    </li>
-                  </ul>
-                  <div className="game-card-footer">
-                    <span className="badge badge-cyan">iOS & iPadOS</span>
-                    <a href="https://apps.apple.com/us/app/founder-sim-startup-game/id6761432505" target="_blank" rel="noopener noreferrer" className="btn btn-cyan" style={{ padding: "9px 16px", fontSize: "12px" }}>
-                      Download on App Store
-                    </a>
-                  </div>
-                </div>
-              </article>
+        {/* 4. SCENARIO SELECT SCREEN (Screen 3 & 5) */}
+        {view === "scenario_select" && (
+          <ScenarioSelectScreen
+            mode={selectedMode}
+            onBack={() => setView("mode_select")}
+            onSelectScenario={(sc) => {
+              setSelectedScenario(sc);
+              setView("game_settings");
+            }}
+          />
+        )}
 
-              {/* Game 3: Movie Mogul */}
-              <article className="game-card">
-                <div className="game-card-banner" style={{ background: "linear-gradient(135deg, #1C1304 0%, #0D0A02 100%)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <img src="/assets/movie-mogul-icon.png" alt="Movie Mogul Studio Tycoon" style={{ width: "120px", height: "120px", objectFit: "contain", borderRadius: "24px", boxShadow: "0 12px 30px rgba(0,0,0,0.7)" }} />
-                </div>
-                <div className="game-card-body">
-                  <div className="game-header-row">
-                    <img src="/assets/movie-mogul-icon.png" alt="Movie Mogul Icon" className="game-app-icon" />
-                    <div>
-                      <h3 className="game-card-title">Movie Mogul</h3>
-                      <span className="game-card-genre" style={{ color: "var(--gold-primary)" }}>Cinema & Studio Tycoon</span>
-                    </div>
-                  </div>
-                  <p className="game-card-desc">
-                    Build a legendary film empire from the Golden Age to modern blockbusters. Sign A-list talent, greenlight risky original scripts, orchestrate marketing campaigns, and compete for global box office glory.
-                  </p>
-                  <ul className="game-features-list">
-                    <li>
-                      <svg width="16" height="16" viewBox="0 0 20 20" fill="#FCD34D"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
-                      Complete Studio Management & Production Pipelines
-                    </li>
-                    <li>
-                      <svg width="16" height="16" viewBox="0 0 20 20" fill="#FCD34D"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
-                      Dynamic Box Office Modeling & Critical Acclaim
-                    </li>
-                    <li>
-                      <svg width="16" height="16" viewBox="0 0 20 20" fill="#FCD34D"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>
-                      Deep Talent Roster with Evolving Reputations
-                    </li>
-                  </ul>
-                  <div className="game-card-footer">
-                    <span className="badge badge-gold">iOS & iPadOS</span>
-                    <a href="#games" className="btn btn-primary" style={{ padding: "9px 16px", fontSize: "12px" }}>
-                      Learn More
-                    </a>
-                  </div>
-                </div>
-              </article>
-            </div>
-          </div>
-        </section>
+        {/* 5. GAME SETTINGS SCREEN (Screen 6) */}
+        {view === "game_settings" && (
+          <GameSettingsScreen
+            scenario={selectedScenario}
+            onBack={() => setView("scenario_select")}
+            onStartChaos={handleStartChaos}
+          />
+        )}
 
-        {/* Studio Philosophy */}
-        <section id="philosophy" className="philosophy-section">
-          <div className="container">
-            <div className="section-header">
-              <span className="section-tag">How We Make Games</span>
-              <h2 className="section-title">The SMISH Philosophy</h2>
-            </div>
+        {/* 6. LOBBY SCREEN (Screen 7) */}
+        {view === "lobby" && room && currentPlayer && (
+          <LobbyScreen
+            room={room}
+            players={players}
+            currentPlayerId={currentPlayer.id}
+            onStartGame={handleStartGameFromLobby}
+            onLeaveRoom={handleLeaveRoom}
+            onEditSettings={() => setView("game_settings")}
+            onAddBot={handleAddBot}
+            onKickPlayer={handleKickPlayer}
+          />
+        )}
 
-            <div className="philosophy-grid">
-              <div className="philosophy-card">
-                <div className="philosophy-icon">⏱️</div>
-                <h3>Zero Artificial Wait Timers</h3>
-                <p>
-                  Your time is sacred. You shouldn't have to wait 8 real-world hours for a film to finish editing or pay gems to speed up your team. Play at your own natural pace.
-                </p>
-              </div>
+        {/* 7. GAMEPLAY SCREENS (Screen 8 to 12 & Screen Reveal) */}
+        {view === "gameplay" && room && currentPlayer && (
+          <>
+            {room.phase === "initial_vote" && (
+              <InitialVoteScreen
+                room={room}
+                round={currentRound}
+                players={players}
+                currentPlayer={currentPlayer}
+                onLockVote={handleLockInitialVote}
+                onLeave={handleLeaveRoom}
+              />
+            )}
 
-              <div className="philosophy-card">
-                <div className="philosophy-icon">🧠</div>
-                <h3>Calculated Agency</h3>
-                <p>
-                  Success should stem from intelligent resource allocation, risk mitigation, and strategic vision—never from predatory loot mechanics or forced monetization friction.
-                </p>
-              </div>
+            {room.phase === "discussion" && (
+              <DiscussionScreen
+                room={room}
+                currentPlayerId={currentPlayer.id}
+                isHost={currentPlayer.isHost}
+                activeModifier={activeModifier}
+                secretMission={currentPlayer.secretMission}
+                onTimeUp={handleDiscussionTimeUp}
+                onExtendDiscussion={() =>
+                  ApiClient.sendAction(room.roomCode, currentPlayer.id, "EXTEND_DISCUSSION", {
+                    seconds: 30,
+                  })
+                }
+                onSkipDiscussion={handleDiscussionTimeUp}
+                onBuzzer={handleBuzzer}
+                onSendEmoji={handleSendEmojiReaction}
+                onLeave={handleLeaveRoom}
+              />
+            )}
 
-              <div className="philosophy-card">
-                <div className="philosophy-icon">💎</div>
-                <h3>Polished Craftsmanship</h3>
-                <p>
-                  From custom 60 FPS haptic feedback on iPhones to real-time multiplayer state synchronization over SSE, every detail is engineered to deliver world-class gameplay.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-      </main>
+            {room.phase === "final_vote" && (
+              <FinalVoteScreen
+                room={room}
+                round={currentRound}
+                currentPlayer={currentPlayer}
+                onLockFinalVote={handleLockFinalVote}
+                onLeave={handleLeaveRoom}
+              />
+            )}
 
-      {/* Global Footer */}
-      <footer className="footer">
-        <div className="container">
-          <div className="footer-top">
-            <div className="footer-brand">
-              <Link href="/" className="brand-logo" aria-label="SMISH Ventures Home">
-                <img src="/assets/logo.png" alt="SMISH Ventures" className="brand-logo-img" />
-              </Link>
-              <p>
-                Independent creator of prestige simulation games and high-energy multiplayer party experiences.
-              </p>
-              <div style={{ marginTop: "14px" }}>
-                <a href="mailto:hey@smishventures.com" style={{ color: "var(--gold-primary)", textDecoration: "none", fontSize: "13.5px", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
-                  hey@smishventures.com
-                </a>
-              </div>
-            </div>
+            {[
+              "reveal_beat_1",
+              "reveal_beat_2",
+              "reveal_beat_3",
+              "reveal_beat_4",
+              "reveal_beat_5",
+              "reveal_beat_6",
+            ].includes(room.phase) && (
+              <RevealScreen
+                room={room}
+                options={currentRound.options}
+                players={players}
+                resolution={
+                  resolution ||
+                  VoteEvaluator.evaluateRound(
+                    room.currentRoundIndex,
+                    currentRound.options,
+                    players
+                  )
+                }
+                isHost={currentPlayer.isHost}
+                onAdvanceBeat={handleAdvanceRevealBeat}
+                onNextRound={handleNextRound}
+                onLeave={handleLeaveRoom}
+              />
+            )}
 
-            <div className="footer-nav">
-              <div className="footer-col">
-                <h4>Games</h4>
-                <ul>
-                  <li><Link href="/chaos" style={{ color: "#FF4D6D", fontWeight: 700 }}>CHAOS (Play Now)</Link></li>
-                  <li><a href="https://apps.apple.com/us/app/founder-sim-startup-game/id6761432505" target="_blank" rel="noopener">Founder Sim (App Store)</a></li>
-                  <li><a href="#games">Movie Mogul</a></li>
-                </ul>
-              </div>
-              <div className="footer-col">
-                <h4>Contact & Support</h4>
-                <ul>
-                  <li><a href="mailto:hey@smishventures.com">hey@smishventures.com</a></li>
-                  <li><a href="/support">Support Center & FAQs</a></li>
-                </ul>
-              </div>
-              <div className="footer-col">
-                <h4>Legal & Compliance</h4>
-                <ul>
-                  <li><a href="/privacy">Privacy Policy</a></li>
-                  <li><a href="/terms">Terms of Service</a></li>
-                </ul>
-              </div>
-            </div>
-          </div>
+            {room.phase === "influence" && (
+              <InfluenceScreen
+                room={room}
+                currentPlayer={currentPlayer}
+                players={players}
+                onSubmitInfluence={handleSubmitInfluence}
+                onContinue={() => handleAdvanceRevealBeat("consequence")}
+                onLeave={handleLeaveRoom}
+              />
+            )}
 
-          <div className="footer-bottom">
-            <div>&copy; 2026 SMISH Ventures. All rights reserved.</div>
-            <div style={{ display: "flex", gap: "20px" }}>
-              <a href="/privacy" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Privacy</a>
-              <a href="/terms" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Terms</a>
-              <a href="/support" style={{ color: "var(--text-muted)", textDecoration: "none" }}>Support</a>
-            </div>
-          </div>
-        </div>
-      </footer>
+            {room.phase === "consequence" && (
+              <ConsequenceScreen
+                room={room}
+                round={currentRound}
+                winningOptionId={
+                  resolution?.winningOptionId ||
+                  VoteEvaluator.evaluateRound(
+                    room.currentRoundIndex,
+                    currentRound.options,
+                    players
+                  ).winningOptionId
+                }
+                liveConsequence={consequenceData}
+                onProceedToBlame={() => handleAdvanceRevealBeat("blame")}
+                onNextRound={handleNextRound}
+                onLeave={handleLeaveRoom}
+              />
+            )}
+
+            {room.phase === "round_wrap" && (
+              <ConsequenceScreen
+                room={room}
+                round={currentRound}
+                winningOptionId={
+                  resolution?.winningOptionId ||
+                  VoteEvaluator.evaluateRound(
+                    room.currentRoundIndex,
+                    currentRound.options,
+                    players
+                  ).winningOptionId
+                }
+                liveConsequence={consequenceData}
+                onProceedToBlame={() => handleAdvanceRevealBeat("blame")}
+                onNextRound={handleNextRound}
+                onLeave={handleLeaveRoom}
+              />
+            )}
+
+            {room.phase === "blame" && (
+              <BlameScreen
+                room={room}
+                currentPlayer={currentPlayer}
+                players={players}
+                receipts={receipts}
+                missionResults={missionResults}
+                onSubmitBlame={handleSubmitBlame}
+                onCompileReceipts={handleCompileReceipts}
+                onNextRound={handleNextRound}
+                onLeave={handleLeaveRoom}
+              />
+            )}
+          </>
+        )}
+
+        {/* 8. CHAOS REPORT (End of Game) */}
+        {view === "chaos_report" && currentPlayer && (
+          <ChaosReportScreen
+            report={
+              chaosReport || {
+                roomId: room?.id || "demo",
+                totalPlayers: players.length || 6,
+                totalDecisions: 18,
+                totalMindChanges: 9,
+                totalResourcesDestroyed: 30000 - (room?.resourceState.balance ?? 18000),
+                mostInfluentialName: "Rohan",
+                theWallName: "Aks",
+                theSheepName: "Priya",
+                mostBlamedName: "Rohan",
+                playerTitles: {
+                  [currentPlayer.id]: "THE MANIPULATOR",
+                },
+                scores: {},
+              }
+            }
+            currentPlayerId={currentPlayer.id}
+            onPlayAgain={() => setView("game_settings")}
+            onGoHome={() => setView("home")}
+          />
+        )}
+      </div>
     </div>
   );
 }

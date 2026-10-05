@@ -1,6 +1,7 @@
 import { AvatarKey, PlayerSession } from "../../core/types/player.types";
 import { GameMode, GameSettings, RoomSession } from "../../core/types/room.types";
 import { ScenarioDefinition } from "../../core/types/scenario.types";
+import { RoundVoteResolution } from "../../core/types/vote.types";
 import { HostPassProduct } from "../../backend/services/monetization.service";
 
 export class ApiClient {
@@ -26,6 +27,8 @@ export class ApiClient {
     room: RoomSession;
     players: PlayerSession[];
     scenario: ScenarioDefinition;
+    resolution?: RoundVoteResolution | null;
+    consequence?: any;
   }> {
     const res = await fetch(`/api/rooms/${code.toUpperCase()}`);
     const data = await res.json();
