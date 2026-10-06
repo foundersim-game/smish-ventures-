@@ -88,16 +88,20 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
 
     if (currentPhase === "reveal_beat_1") {
       audio.play("tick_calm");
-      timer = setTimeout(() => {
-        onAdvanceBeat("reveal_beat_2");
-      }, 1000);
+      if (isHost) {
+        timer = setTimeout(() => {
+          onAdvanceBeat("reveal_beat_2");
+        }, 1000);
+      }
     } else if (currentPhase === "reveal_beat_2") {
       // Beat 2: Card shakes with suspense + plays BGM reveal music
       audio.play("reveal_bgm");
       haptics.trigger("heavy");
-      timer = setTimeout(() => {
-        onAdvanceBeat("reveal_beat_3");
-      }, 1800);
+      if (isHost) {
+        timer = setTimeout(() => {
+          onAdvanceBeat("reveal_beat_3");
+        }, 1800);
+      }
     } else if (currentPhase === "reveal_beat_3") {
       // Beat 3: Card rotates in 3D to reveal front face
       haptics.trigger("chaos_moment");
@@ -111,17 +115,21 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
       } catch {
         // Ignored
       }
-      timer = setTimeout(() => {
-        onAdvanceBeat("reveal_beat_6");
-      }, 1400);
+      if (isHost) {
+        timer = setTimeout(() => {
+          onAdvanceBeat("reveal_beat_6");
+        }, 1400);
+      }
     } else if (currentPhase === "reveal_beat_4" || currentPhase === "reveal_beat_5") {
-      timer = setTimeout(() => {
-        onAdvanceBeat("reveal_beat_6");
-      }, 800);
+      if (isHost) {
+        timer = setTimeout(() => {
+          onAdvanceBeat("reveal_beat_6");
+        }, 800);
+      }
     }
 
     return () => clearTimeout(timer);
-  }, [currentPhase, onAdvanceBeat]);
+  }, [currentPhase, isHost, onAdvanceBeat]);
 
   const isEarlyStage = ["reveal_beat_1", "reveal_beat_2", "reveal_beat_3"].includes(currentPhase);
   const isBoxShaking = currentPhase === "reveal_beat_2";

@@ -2,7 +2,7 @@ import { ScenarioDefinition } from "../../../core/types/scenario.types";
 
 export const NIGHT_OUT_SCENARIO: ScenarioDefinition = {
   id: "night_out_01",
-  title: "NIGHT OUT: THE ₹30,000 ESCALATION",
+  title: "NIGHT OUT: THE $3,000 ESCALATION",
   category: "night_out",
   tagline: "10 connected rounds of midnight madness, bills, bouncers & escapes.",
   description: "A continuous 10-round midnight saga. Every single decision directly causes the next crazy emergency, from 11:30 PM pre-drinks to 6:00 AM sunrise reckoning.",
@@ -16,13 +16,13 @@ export const NIGHT_OUT_SCENARIO: ScenarioDefinition = {
   features: [
     "10 connected story rounds",
     "Continuous narrative consequences",
-    "Dynamic ₹30,000 budget & sanity tracking",
+    "Dynamic $3,000 budget & sanity tracking",
     "Secret saboteur missions across rounds",
     "Mind-change reveals & tie-breaker mechanics",
     "End-game CHAOS Report summary",
   ],
   initialResourceState: {
-    balance: 30000,
+    balance: 3000,
     sanity: 100,
     chaosScore: 20,
   },
@@ -32,58 +32,58 @@ export const NIGHT_OUT_SCENARIO: ScenarioDefinition = {
       roundIndex: 1,
       category: "night_out",
       difficulty: "normal",
-      prompt: "It's 11:30 PM outside the nightlife strip. The group has pooled a ₹30,000 kitty for the entire night.",
+      prompt: "It's 11:30 PM outside the nightlife strip. The group has pooled a $3,000 fund for the entire night.",
       question: "Where does the squad make its opening move?",
-      highlightedText: "₹30,000 Kitty",
+      highlightedText: "$3,000 Kitty",
       discussionDurationSeconds: 60,
       options: [
         {
           id: "A",
           label: "Lock in the velvet-rope VIP booth",
-          subtitle: "Instant prestige, sparklers, burn ₹18,000 immediately.",
+          subtitle: "Instant prestige, sparklers, burn $1,800 immediately.",
           badgeColor: "pink",
         },
         {
           id: "B",
           label: "Hit the open-air rooftop craft lounge",
-          subtitle: "Signature cocktails, skyline view, respectable ₹10,000 tab.",
+          subtitle: "Signature cocktails, skyline view, respectable $1,000 tab.",
           badgeColor: "blue",
         },
         {
           id: "C",
           label: "Dive into the sketchy basement speakeasy",
-          subtitle: "₹3,000 entry, bass that shakes your ribs, unhinged crowd.",
+          subtitle: "$300 entry, bass that shakes your ribs, unhinged crowd.",
           badgeColor: "yellow",
         },
         {
           id: "D",
-          label: "Bet ₹15,000 at the backroom roulette table first",
-          subtitle: "Double the budget to ₹60,000 or start broke. YOLO.",
+          label: "Bet $1,500 at the backroom roulette table first",
+          subtitle: "Double the budget to $6,000 or start broke. YOLO.",
           badgeColor: "purple",
         },
       ],
       consequences: {
         A: {
           title: "VIP STATUS SECURED (AT A PRICE)",
-          narrative: "The velvet rope parted like the Red Sea. You took over Booth #1, but the ₹18,000 deposit vanished in 10 minutes!",
-          resourceDelta: { balance: -18000, sanity: 10, chaosScore: 25 },
+          narrative: "The velvet rope parted like the Red Sea. You took over Booth #1, but the $1,800 deposit vanished in 10 minutes!",
+          resourceDelta: { balance: -1800, sanity: 10, chaosScore: 25 },
         },
         B: {
           title: "ELEVATED LUXURY, SLOW BURN",
-          narrative: "The skyline was gorgeous and the craft cocktails hit instantly. ₹10,000 gone, but everyone feels like royalty.",
-          resourceDelta: { balance: -10000, sanity: 15, chaosScore: 10 },
+          narrative: "The skyline was gorgeous and the craft cocktails hit instantly. $1,000 gone, but everyone feels like royalty.",
+          resourceDelta: { balance: -1000, sanity: 15, chaosScore: 10 },
         },
         C: {
           title: "SWEATY UNDERGROUND MADNESS",
-          narrative: "You stepped down into the dark basement. Ear-shattering bass, flashing strobes, and ₹3,000 spent. Chaos begins!",
-          resourceDelta: { balance: -3000, sanity: -15, chaosScore: 45 },
+          narrative: "You stepped down into the dark basement. Ear-shattering bass, flashing strobes, and $300 spent. Chaos begins!",
+          resourceDelta: { balance: -300, sanity: -15, chaosScore: 45 },
           triggerChaosMoment: true,
           chaosMomentMessage: "THE UNDERGROUND BASS DROPPED! WE'RE ALL UNHINGED!",
         },
         D: {
           title: "ROULETTE WHEEL SPUN",
-          narrative: "Ball landed on Red 18! You didn't double it, but you walked away with ₹20,000 after an intense sweat session.",
-          resourceDelta: { balance: -5000, sanity: -25, chaosScore: 60 },
+          narrative: "Ball landed on Red 18! You didn't double it, but you walked away with $2,000 after an intense sweat session.",
+          resourceDelta: { balance: -500, sanity: -25, chaosScore: 60 },
         },
       },
     },
@@ -93,13 +93,13 @@ export const NIGHT_OUT_SCENARIO: ScenarioDefinition = {
       roundIndex: 2,
       category: "night_out",
       difficulty: "spicy",
-      prompt: "Midnight bill shock! Four waiters suddenly march to your table carrying lit pyrotechnic sparkler bottles you didn't order. The bill is ₹48,000, and 6 bouncers are blocking the VIP exit.",
-      question: "How does the squad handle the hostage bill?",
-      highlightedText: "₹48,000 Surprise Bill",
+      prompt: "Midnight bill shock! Four servers suddenly march to your table carrying lit pyrotechnic sparkler bottles with vintage champagne. The bill is $4,800 with 20% auto-gratuity, and 4 bouncers are blocking the VIP exit.",
+      question: "How does the squad handle the surprise bill?",
+      highlightedText: "$4,800 Surprise Bill",
       discussionDurationSeconds: 60,
       secretIntelRule: {
         targetPlayerCount: 1,
-        intelMessage: "You noticed the club manager is wearing a fake Rolex and sweating. He knows the waiter made an ordering mistake!",
+        intelMessage: "You noticed the club manager is wearing a fake Rolex and sweating. He knows the server made an ordering mistake!",
         secretGoal: "Convince the group to choose Option B (Pool cards) or C (Charm manager)!",
       },
       options: [
@@ -111,14 +111,14 @@ export const NIGHT_OUT_SCENARIO: ScenarioDefinition = {
         },
         {
           id: "B",
-          label: "Pool everyone's credit cards and max out UPI",
-          subtitle: "Pay the extortion, keep our kneecaps intact.",
+          label: "Split across everyone's credit cards and max out Apple Pay",
+          subtitle: "Pay the extortion, keep our reputations intact.",
           badgeColor: "blue",
         },
         {
           id: "C",
           label: "Send your smoothest friend to charm the manager",
-          subtitle: "Flattery, fake Instagram clout, and negotiation.",
+          subtitle: "Flattery, charisma, and aggressive negotiation.",
           badgeColor: "yellow",
         },
         {
@@ -131,18 +131,18 @@ export const NIGHT_OUT_SCENARIO: ScenarioDefinition = {
       consequences: {
         A: {
           title: "SECURITY STANDOFF",
-          narrative: "The head bouncer crossed his arms and stared. 20 tense minutes later, they discounted the bill to ₹22,000.",
-          resourceDelta: { balance: -22000, sanity: -20, chaosScore: 35 },
+          narrative: "The head bouncer crossed his arms and stared. 20 tense minutes later, they discounted the bill to $2,200.",
+          resourceDelta: { balance: -2200, sanity: -20, chaosScore: 35 },
         },
         B: {
           title: "FINANCIAL CARNAGE",
           narrative: "Six cards tapped simultaneously. Bank notifications pinged like machine guns. You survived, but bank balances are crying.",
-          resourceDelta: { balance: -28000, sanity: -35, chaosScore: 20 },
+          resourceDelta: { balance: -2800, sanity: -35, chaosScore: 20 },
         },
         C: {
           title: "THE CHARISMA MIRACLE",
-          narrative: "Your friend offered to tag the club in an 'exclusive influencer reel'. Manager smiled, waived the sparklers, charging only ₹12,000!",
-          resourceDelta: { balance: -12000, sanity: 20, chaosScore: 30 },
+          narrative: "Your friend offered to tag the club in an 'exclusive influencer reel'. Manager smiled, waived the sparklers, charging only $1,200!",
+          resourceDelta: { balance: -1200, sanity: 20, chaosScore: 30 },
         },
         D: {
           title: "STAMPEDE THROUGH THE VELVET ROPE",
@@ -172,7 +172,7 @@ export const NIGHT_OUT_SCENARIO: ScenarioDefinition = {
       options: [
         {
           id: "A",
-          label: "Bribe the back-alley dishwasher ₹2,000 to fetch it",
+          label: "Bribe the back-alley dishwasher $100 cash to fetch it",
           subtitle: "Cash speaks louder than bouncers.",
           badgeColor: "pink",
         },
@@ -251,8 +251,8 @@ export const NIGHT_OUT_SCENARIO: ScenarioDefinition = {
         },
         {
           id: "C",
-          label: "Bribe the chauffeur ₹3,000 to drop you at McDonald's drive-thru",
-          subtitle: "McSpicy burgers in a ₹2.5 Crore luxury sedan.",
+          label: "Tip the chauffeur $50 cash to drop you at a 24-hour drive-thru",
+          subtitle: "Cheeseburgers in a $250,000 luxury Maybach.",
           badgeColor: "yellow",
         },
         {
@@ -332,11 +332,11 @@ export const NIGHT_OUT_SCENARIO: ScenarioDefinition = {
         },
         B: {
           title: "SUSHI PLUNDER",
-          narrative: "You consumed ₹40,000 worth of bluefin tuna rolls behind a potted palm tree. Satisfied, full, and slightly paranoid.",
+          narrative: "You consumed $800 worth of bluefin tuna rolls behind a potted palm tree. Satisfied, full, and slightly paranoid.",
           resourceDelta: { balance: 0, sanity: 15, chaosScore: 10 },
         },
         C: {
-          title: "PENTHOUSE TURNED DANCE DANDIYA",
+          title: "PENTHOUSE CONGA LINE",
           narrative: "The 90s hits blasted through the surround sound! Models and investors kicked off their heels and formed a giant conga line!",
           resourceDelta: { balance: 0, sanity: 30, chaosScore: 60 },
           triggerChaosMoment: true,
@@ -609,13 +609,13 @@ export const NIGHT_OUT_SCENARIO: ScenarioDefinition = {
       roundIndex: 10,
       category: "night_out",
       difficulty: "spicy",
-      prompt: "6:00 AM GRAND FINALE. The orange sun is rising over Marine Drive. Waves crash gently against the rocks. The squad has ₹140 left in total, 4% phone battery, and 15 minutes before family group chats wake up.",
+      prompt: "6:00 AM GRAND FINALE. The orange sun is rising over the skyline. The squad is sitting inside a 24-hour diner with $4 left in total, 3% phone battery, and 15 minutes before everyone's alarms go off.",
       question: "What is the official squad story and morning pact?",
-      highlightedText: "6:00 AM Sunrise Pact",
+      highlightedText: "$4 Remaining at 6:00 AM",
       discussionDurationSeconds: 60,
       secretIntelRule: {
         targetPlayerCount: 1,
-        intelMessage: "You took a legendary 4K video of the rooftop conga line that will go viral on Instagram reels.",
+        intelMessage: "You took a legendary 4K video of the rooftop conga line that would go viral anywhere.",
         secretGoal: "Convince the group to pick Option B (Post the photo dump) or Option D (Crowdfund)!",
       },
       options: [
@@ -652,7 +652,7 @@ export const NIGHT_OUT_SCENARIO: ScenarioDefinition = {
         },
         B: {
           title: "INTERNET BROKEN",
-          narrative: "The 10-slide photo dump hit Instagram. Within 2 hours it has 8,000 likes and 400 comments demanding an explanation!",
+          narrative: "The 10-slide photo dump hit the internet. Within 2 hours it has 8,000 views and 400 comments demanding an explanation!",
           resourceDelta: { balance: 0, sanity: -20, chaosScore: 100 },
           triggerChaosMoment: true,
           chaosMomentMessage: "YOU BROKE THE INTERNET! LEGENDARY NIGHT COMPLETED!",
@@ -664,9 +664,9 @@ export const NIGHT_OUT_SCENARIO: ScenarioDefinition = {
         },
         D: {
           title: "PODCAST PILOT EPISODE TRENDING",
-          narrative: "The raw 15-minute voice recording got picked up by Spotify charts! Sponsors are offering ₹50,000 for Episode 2!",
+          narrative: "The raw 15-minute voice recording got picked up on Spotify charts! A media sponsor is offering $2,500 for Episode 2!",
           isAbsurd: true,
-          resourceDelta: { balance: 50000, sanity: 50, chaosScore: 80 },
+          resourceDelta: { balance: 2500, sanity: 50, chaosScore: 80 },
           triggerChaosMoment: true,
           chaosMomentMessage: "YOUR HANGOVER RECAP HIT #1 ON THE CHARTS!",
         },

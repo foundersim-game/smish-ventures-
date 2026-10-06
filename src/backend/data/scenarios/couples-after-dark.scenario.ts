@@ -10,7 +10,7 @@ export const COUPLES_AFTER_DARK_SCENARIO: ScenarioDefinition = {
   recommendedPlayers: "2 players",
   totalRounds: 4,
   isPremium: true,
-  priceTier: "₹149",
+  priceTier: "$2.99",
   vibeTag: "🌙 2 AM ADRENALINE",
   vibeColor: "purple",
   goodFor: "Late night date nights, thrilling dilemmas, high-stakes teamwork & laughter.",
@@ -30,8 +30,8 @@ export const COUPLES_AFTER_DARK_SCENARIO: ScenarioDefinition = {
       roundIndex: 1,
       category: "couples",
       difficulty: "spicy",
-      prompt: "It's 1:30 AM. A breathless courier delivers a heavy aluminum lockbox to your doorstep with an envelope of ₹10,00,000 cash and a note: 'Spend every single rupee before sunrise or the sender takes it back with interest.' What is OUR overnight blitz plan?",
-      question: "Burn ₹10 Lakh before sunrise together:",
+      prompt: "It's 1:30 AM. A breathless courier delivers a heavy aluminum lockbox to your doorstep with an envelope of $100,000 cash and a note: 'Spend every single dollar before sunrise or the sender takes it back with interest.' What is OUR overnight blitz plan?",
+      question: "Burn $100,000 before sunrise together:",
       discussionDurationSeconds: 60,
       options: [
         {
@@ -48,7 +48,7 @@ export const COUPLES_AFTER_DARK_SCENARIO: ScenarioDefinition = {
         },
         {
           id: "C",
-          label: "Walk the night streets distributing ₹10,000 envelopes to night workers",
+          label: "Walk the night streets distributing $1,000 envelopes to night workers",
           subtitle: "Cleaners, emergency nurses, stray shelters—pure good karma.",
           badgeColor: "yellow",
         },

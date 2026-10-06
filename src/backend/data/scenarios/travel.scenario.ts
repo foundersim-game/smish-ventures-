@@ -23,7 +23,7 @@ export const TRAVEL_SCENARIO: ScenarioDefinition = {
     "End-game CHAOS Report summary",
   ],
   initialResourceState: {
-    balance: 50000,
+    balance: 1500,
     sanity: 100,
     chaosScore: 15,
   },
@@ -33,20 +33,20 @@ export const TRAVEL_SCENARIO: ScenarioDefinition = {
       roundIndex: 1,
       category: "travel",
       difficulty: "normal",
-      prompt: "2:00 AM at the overseas transit terminal. The departure screen flashes: 'FLIGHT 404 TO TROPICAL PARADISE CANCELLED'. The airline gives you a choice: Sleep on metal airport chairs with ₹1,000 food vouchers, or pool ₹20,000 for the last ferry to the island tonight.",
+      prompt: "2:00 AM at the overseas transit terminal. The departure screen flashes: 'FLIGHT 404 TO TROPICAL PARADISE CANCELLED'. The airline gives you a choice: Sleep on metal airport chairs with $50 food vouchers, or pool $400 for the last speedboat charter to the island tonight.",
       question: "What does the stranded squad decide?",
       highlightedText: "Flight 404 Cancelled",
       discussionDurationSeconds: 60,
       options: [
         {
           id: "A",
-          label: "Take the ₹1,000 vouchers and sleep on airport benches",
+          label: "Take the $50 vouchers and sleep on airport benches",
           subtitle: "Use luggage as pillows, save money, wait for morning standby.",
           badgeColor: "pink",
         },
         {
           id: "B",
-          label: "Pool ₹20,000 and board the midnight speedboat ferry right now",
+          label: "Pool $400 and board the midnight speedboat charter right now",
           subtitle: "We came for the island, and we're reaching the island tonight.",
           badgeColor: "blue",
         },
@@ -72,7 +72,7 @@ export const TRAVEL_SCENARIO: ScenarioDefinition = {
         B: {
           title: "MIDNIGHT SPEEDBOAT RUN",
           narrative: "Salt spray in your faces as the boat skimmed black waves under a starry sky! Landed on the island pier at 3:30 AM!",
-          resourceDelta: { balance: -20000, sanity: 25, chaosScore: 30 },
+          resourceDelta: { balance: -400, sanity: 25, chaosScore: 30 },
         },
         C: {
           title: "CUSTOMER SERVICE CRUSADE",
@@ -83,7 +83,7 @@ export const TRAVEL_SCENARIO: ScenarioDefinition = {
           title: "GATE 14 RAVE",
           narrative: "Luggage speakers blasted pop anthems! Stranded passengers joined in! Airport security came over... and started dancing!",
           isAbsurd: true,
-          resourceDelta: { balance: -5000, sanity: 25, chaosScore: 60 },
+          resourceDelta: { balance: -100, sanity: 25, chaosScore: 60 },
           triggerChaosMoment: true,
           chaosMomentMessage: "YOU THREW A PARTY AT AIRPORT GATE 14!",
         },
@@ -125,7 +125,7 @@ export const TRAVEL_SCENARIO: ScenarioDefinition = {
         },
         {
           id: "D",
-          label: "Flag down a passing local fishing tractor for a ₹5,000 tow",
+          label: "Flag down a passing local fishing tractor for a $100 tow",
           subtitle: "Pay the tourist tax, keep our clothes clean.",
           badgeColor: "purple",
         },
@@ -150,8 +150,8 @@ export const TRAVEL_SCENARIO: ScenarioDefinition = {
         },
         D: {
           title: "FISHING TRACTOR PULL",
-          narrative: "The tractor driver laughed, took the cash, and yanked the Jeep free in 30 seconds. Easy, but ₹5,000 lighter.",
-          resourceDelta: { balance: -5000, sanity: 10, chaosScore: 15 },
+          narrative: "The tractor driver laughed, took the cash, and yanked the Jeep free in 30 seconds. Easy, but $100 lighter.",
+          resourceDelta: { balance: -100, sanity: 10, chaosScore: 15 },
         },
       },
     },
@@ -180,7 +180,7 @@ export const TRAVEL_SCENARIO: ScenarioDefinition = {
         },
         {
           id: "C",
-          label: "Pool another ₹15,000 to move to the hotel resort down the beach",
+          label: "Pool another $300 to move to the hotel resort down the beach",
           subtitle: "Blow the budget. We deserve air conditioning and real beds.",
           badgeColor: "yellow",
         },
@@ -199,21 +199,21 @@ export const TRAVEL_SCENARIO: ScenarioDefinition = {
         },
         B: {
           title: "BOOKING APP WARFARE",
-          narrative: "After 40 minutes on hold, the app apologized with a 100% refund PLUS ₹10,000 resort compensation vouchers!",
-          resourceDelta: { balance: 10000, sanity: 30, chaosScore: 15 },
+          narrative: "After 40 minutes on hold, the app apologized with a 100% refund PLUS $200 resort compensation vouchers!",
+          resourceDelta: { balance: 200, sanity: 30, chaosScore: 15 },
         },
         C: {
           title: "5-STAR RESCUE PURCHASED",
           narrative: "Checked into the ocean resort! Crisp white sheets, infinity pool, and no roosters in sight. Budget is bleeding though.",
-          resourceDelta: { balance: -15000, sanity: 40, chaosScore: 10 },
+          resourceDelta: { balance: -300, sanity: 40, chaosScore: 10 },
         },
         D: {
           title: "THE CHICKEN LOUNGE SENSATION",
-          narrative: "You chopped coconuts and played music. 25 backpackers showed up! You made ₹12,000 in drink donations!",
+          narrative: "You chopped coconuts and played music. 25 backpackers showed up! You made $250 in drink donations!",
           isAbsurd: true,
-          resourceDelta: { balance: 12000, sanity: 35, chaosScore: 60 },
+          resourceDelta: { balance: 250, sanity: 35, chaosScore: 60 },
           triggerChaosMoment: true,
-          chaosMomentMessage: "YOUR CHICKEN BAR MADE ₹12,000 PROFIT!",
+          chaosMomentMessage: "YOUR CHICKEN BAR MADE $250 PROFIT!",
         },
       },
     },
@@ -289,20 +289,20 @@ export const TRAVEL_SCENARIO: ScenarioDefinition = {
       roundIndex: 5,
       category: "travel",
       difficulty: "spicy",
-      prompt: "After drying the passports, you discover the local ferry to the mainland has been cancelled due to heavy chop. The ONLY way to cross to the full-moon party island tonight is a wooden smuggler longboat run by an eyepatch-wearing fisherman named 'Uncle Tony' who charges ₹8,000.",
+      prompt: "After drying the passports, you discover the local ferry to the mainland has been cancelled due to heavy chop. The ONLY way to cross to the full-moon party island tonight is a wooden smuggler longboat run by an eyepatch-wearing fisherman named 'Uncle Tony' who charges $150.",
       question: "Does the squad board Uncle Tony's suspicious longboat?",
       highlightedText: "Uncle Tony's Longboat",
       discussionDurationSeconds: 60,
       options: [
         {
           id: "A",
-          label: "Pay Uncle Tony ₹8,000, put on orange life jackets, and embrace fate",
+          label: "Pay Uncle Tony $150, put on orange life jackets, and embrace fate",
           subtitle: "True pirate voyage across turbulent tropical waters.",
           badgeColor: "pink",
         },
         {
           id: "B",
-          label: "Negotiate down to ₹5,000 by offering to help shovel bilge water",
+          label: "Negotiate down to $100 by offering to help shovel bilge water",
           subtitle: "Working crew discount. Put your back into it.",
           badgeColor: "blue",
         },
@@ -323,17 +323,17 @@ export const TRAVEL_SCENARIO: ScenarioDefinition = {
         A: {
           title: "PIRATES OF THE BAY",
           narrative: "Uncle Tony fired up the roaring two-stroke engine! The longboat skipped over 8-foot waves like a flying fish! Thrilling arrival!",
-          resourceDelta: { balance: -8000, sanity: 20, chaosScore: 40 },
+          resourceDelta: { balance: -150, sanity: 20, chaosScore: 40 },
         },
         B: {
           title: "DECKHAND APPRENTICES",
-          narrative: "Uncle Tony gave you tin buckets to scoop seawater. Hard work, but you saved ₹3,000 and earned Uncle Tony's eternal respect.",
-          resourceDelta: { balance: -5000, sanity: 15, chaosScore: 25 },
+          narrative: "Uncle Tony gave you tin buckets to scoop seawater. Hard work, but you saved $50 and earned Uncle Tony's eternal respect.",
+          resourceDelta: { balance: -100, sanity: 15, chaosScore: 25 },
         },
         C: {
           title: "BONFIRE PEACE",
           narrative: "Warm orange glow of the fire, gentle waves, singing along to acoustic songs under shooting stars. Peak wholesome relaxation.",
-          resourceDelta: { balance: -1000, sanity: 40, chaosScore: -15 },
+          resourceDelta: { balance: -20, sanity: 40, chaosScore: -15 },
         },
         D: {
           title: "KAYAK ARM REGRETS",
@@ -417,14 +417,14 @@ export const TRAVEL_SCENARIO: ScenarioDefinition = {
       discussionDurationSeconds: 60,
       secretIntelRule: {
         targetPlayerCount: 1,
-        intelMessage: "You have a hidden ₹2,000 emergency note tucked inside your shoe insole.",
+        intelMessage: "You have a hidden $50 emergency bill tucked inside your shoe insole.",
         secretGoal: "Persuade the squad to choose Option A (Scrape cash) or Option D (Wash dishes)!",
       },
       options: [
         {
           id: "A",
           label: "Scrape everyone's pockets for mixed coins, foreign bills, and loose cash",
-          subtitle: "Euros, Dirhams, Rupees, and chewing gum. Total barter.",
+          subtitle: "Euros, Dollars, loose change, and chewing gum. Total barter.",
           badgeColor: "pink",
         },
         {
@@ -449,13 +449,13 @@ export const TRAVEL_SCENARIO: ScenarioDefinition = {
       consequences: {
         A: {
           title: "INTERNATIONAL CURRENCY PILE",
-          narrative: "You produced 10 Euros, 50 Dirhams, ₹1,200, and a shiny commemorative coin. The chef nodded: 'Fair trade.'",
-          resourceDelta: { balance: -2500, sanity: 15, chaosScore: 20 },
+          narrative: "You produced 10 Euros, $25, and shiny coins. The chef nodded: 'Fair trade.'",
+          resourceDelta: { balance: -50, sanity: 15, chaosScore: 20 },
         },
         B: {
           title: "HOLD MUSIC HYPNOSIS",
           narrative: "Standing under an umbrella listening to flute jazz on hold. The card unfroze! Tacos paid, but patience was tested.",
-          resourceDelta: { balance: -3000, sanity: -15, chaosScore: 10 },
+          resourceDelta: { balance: -60, sanity: -15, chaosScore: 10 },
         },
         C: {
           title: "TACO SERENADE",
@@ -492,7 +492,7 @@ export const TRAVEL_SCENARIO: ScenarioDefinition = {
         {
           id: "B",
           label: "Wake up Uncle Tony and launch his wooden longboat for extraction",
-          subtitle: "Diesel power rescue. ₹3,000 tip for his trouble.",
+          subtitle: "Diesel power rescue. $60 tip for his trouble.",
           badgeColor: "blue",
         },
         {
@@ -540,7 +540,7 @@ export const TRAVEL_SCENARIO: ScenarioDefinition = {
       roundIndex: 9,
       category: "travel",
       difficulty: "spicy",
-      prompt: "4:45 AM. Driving back to catch the morning flight, the Jeep's brakes screech, and you accidentally nudge over a wooden fence in a private coconut plantation. An angry grove owner steps out with a flashlight demanding ₹10,000 for the fence damages!",
+      prompt: "4:45 AM. Driving back to catch the morning flight, the Jeep's brakes screech, and you accidentally nudge over a wooden fence in a private coconut plantation. An angry grove owner steps out with a flashlight demanding $200 for the fence damages!",
       question: "How do you negotiate the coconut fence settlement?",
       highlightedText: "Coconut Plantation Standoff",
       discussionDurationSeconds: 60,
@@ -552,13 +552,13 @@ export const TRAVEL_SCENARIO: ScenarioDefinition = {
       options: [
         {
           id: "A",
-          label: "Offer to buy 40 fresh coconuts from him right now for ₹4,000",
+          label: "Offer to buy 40 fresh coconuts from him right now for $80",
           subtitle: "Turn property damage into a bulk agricultural purchase.",
           badgeColor: "pink",
         },
         {
           id: "B",
-          label: "Pay the full ₹10,000 extortion to avoid missing the flight",
+          label: "Pay the full $200 settlement to avoid missing the flight",
           subtitle: "Time is money. The airport gate closes in 90 minutes.",
           badgeColor: "blue",
         },
@@ -578,13 +578,13 @@ export const TRAVEL_SCENARIO: ScenarioDefinition = {
       consequences: {
         A: {
           title: "THE COCONUT COMPROMISE",
-          narrative: "He smiled, accepted the ₹4,000, and chopped down 40 fresh tender coconuts for the car! Refreshing road drinks!",
-          resourceDelta: { balance: -4000, sanity: 25, chaosScore: 20 },
+          narrative: "He smiled, accepted the $80, and chopped down 40 fresh tender coconuts for the car! Refreshing road drinks!",
+          resourceDelta: { balance: -80, sanity: 25, chaosScore: 20 },
         },
         B: {
           title: "EXPENSIVE DEPARTURE",
-          narrative: "Paid ₹10,000 cash. He opened the gate immediately. Painful for the wallet, but path to airport is clear.",
-          resourceDelta: { balance: -10000, sanity: -10, chaosScore: 10 },
+          narrative: "Paid $200 cash. He opened the gate immediately. Painful for the wallet, but path to airport is clear.",
+          resourceDelta: { balance: -200, sanity: -10, chaosScore: 10 },
         },
         C: {
           title: "BOB THE BUILDER SQUAD",

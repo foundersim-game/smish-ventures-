@@ -32,7 +32,7 @@ export interface GameSettings {
 }
 
 export interface ScenarioResourceState {
-  balance?: number; // e.g. ₹30,000 Night Out budget
+  balance?: number; // e.g. $3,000 Night Out budget
   chaosScore?: number;
   sanity?: number;
   customFlags?: Record<string, string | number | boolean>;

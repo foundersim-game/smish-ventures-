@@ -41,8 +41,8 @@ export const COUPLES_PACK_SCENARIO: ScenarioDefinition = {
         },
         {
           id: "B",
-          label: "Offer ₹5,000 cash to a passing chicken-truck driver for a ride",
-          subtitle: "Ride in the back with 80 chickens straight into town.",
+          label: "Offer $100 cash to a passing pickup-truck driver for a ride",
+          subtitle: "Ride in the flatbed under the stars straight into town.",
           badgeColor: "blue",
         },
         {
@@ -173,7 +173,7 @@ export const COUPLES_PACK_SCENARIO: ScenarioDefinition = {
       consequences: {
         A: {
           title: "YACHT CRUISE HIGH-LIFE",
-          narrative: "Drank ₹40,000 of champagne on their yacht. The ex looked bewildered while you two took golden-hour selfies!",
+          narrative: "Drank $500 of champagne on their yacht. The ex looked bewildered while you two took golden-hour selfies!",
           resourceDelta: { sanity: 30, chaosScore: 25 },
         },
         B: {
@@ -197,13 +197,13 @@ export const COUPLES_PACK_SCENARIO: ScenarioDefinition = {
       roundIndex: 4,
       category: "couples",
       difficulty: "spicy",
-      prompt: "Final day! Your flight home is overbooked by 1 passenger. The airline offers a free ₹1,50,000 flight voucher if ONE of you stays behind alone for 24 hours, or you both can stay together and miss Monday morning work meetings. What is OUR verdict?",
+      prompt: "Final day! Your flight home is overbooked by 1 passenger. The airline offers a free $1,500 flight voucher if ONE of you stays behind alone for 24 hours, or you both can stay together and miss Monday morning work meetings. What is OUR verdict?",
       question: "What is our final flight resolution?",
       discussionDurationSeconds: 60,
       options: [
         {
           id: "A",
-          label: "One partner takes the ₹1,50,000 voucher for a solo luxury spa day",
+          label: "One partner takes the $1,500 voucher for a solo luxury spa day",
           subtitle: "One flies home for work; the other enjoys 24 hours in paradise.",
           badgeColor: "pink",
         },
@@ -229,7 +229,7 @@ export const COUPLES_PACK_SCENARIO: ScenarioDefinition = {
       consequences: {
         A: {
           title: "THE SOLO SPA WINDFALL",
-          narrative: "₹1,50,000 voucher in pocket! One partner had infinity-pool massages; the other had quiet flight sleep.",
+          narrative: "$1,500 voucher in pocket! One partner had infinity-pool massages; the other had quiet flight sleep.",
           resourceDelta: { sanity: 30, chaosScore: 10 },
         },
         B: {

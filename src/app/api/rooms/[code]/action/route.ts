@@ -69,6 +69,11 @@ export async function POST(
         return NextResponse.json({ success: true });
       }
 
+      case "UPDATE_SETTINGS": {
+        const room = await RoomService.updateSettings(code, playerId, payload.settings);
+        return NextResponse.json({ success: true, room });
+      }
+
       case "LEAVE_ROOM": {
         await RoomService.kickPlayer(code, playerId, playerId);
         return NextResponse.json({ success: true });

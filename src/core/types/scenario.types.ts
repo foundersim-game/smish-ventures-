@@ -38,9 +38,9 @@ export interface ScenarioRound {
   roundIndex: number;
   category: ScenarioCategory;
   difficulty: "casual" | "normal" | "spicy";
-  prompt: string; // "It's 11:30 PM. You have ₹30,000 left for the rest of the night."
+  prompt: string; // "It's 11:30 PM. You have $3,000 left for the rest of the night."
   question: string; // "What should the group do?"
-  highlightedText?: string; // "₹30,000"
+  highlightedText?: string; // "$3,000"
   discussionDurationSeconds: number; // 60, 90, 120
   options: ScenarioOption[];
   consequences: Record<string, ScenarioConsequence>; // keyed by option id "A", "B", etc.
@@ -57,7 +57,7 @@ export interface ScenarioDefinition {
   recommendedPlayers: string; // "4 - 10 players"
   totalRounds: number;
   isPremium: boolean;
-  priceTier?: string; // e.g. "₹149"
+  priceTier?: string; // e.g. "$2.99"
   vibeTag?: string; // e.g. "⚡ FAST & LOUD", "🌶️ SPICY & UNFILTERED"
   vibeColor?: "pink" | "amber" | "purple" | "rose" | "emerald" | "red" | "cyan" | "indigo";
   goodFor: string;

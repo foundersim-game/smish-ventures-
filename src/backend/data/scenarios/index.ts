@@ -13,13 +13,19 @@ import { GOA_SCENARIO } from "./goa.scenario";
 import { COLLEGE_SCENARIO } from "./college.scenario";
 import { ABSURD_SCENARIO } from "./absurd.scenario";
 import { WEDDING_SCENARIO } from "./wedding.scenario";
+import { STARTUP_SCENARIO } from "./startup.scenario";
+import { ASPEN_SCENARIO } from "./aspen.scenario";
+import { LAKE_HOUSE_SCENARIO } from "./lake-house.scenario";
 
 export const SCENARIO_CATALOG: ScenarioDefinition[] = [
-  // Party Mode Flagship Packs (4-10 players, up to 10 connected rounds)
+  // Party Mode Flagship Packs (4-10 players, 8-10 connected rounds each)
   QUICK_CHAOS_SCENARIO,
   NIGHT_OUT_SCENARIO,
   ABSURD_SCENARIO,
   TRAVEL_SCENARIO,
+  STARTUP_SCENARIO,
+  ASPEN_SCENARIO,
+  LAKE_HOUSE_SCENARIO,
   GOA_SCENARIO,
   COLLEGE_SCENARIO,
   WEDDING_SCENARIO,

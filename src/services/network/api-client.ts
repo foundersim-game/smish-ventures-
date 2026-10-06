@@ -4,6 +4,13 @@ import { ScenarioDefinition } from "../../core/types/scenario.types";
 import { RoundVoteResolution } from "../../core/types/vote.types";
 import { HostPassProduct } from "../../backend/services/monetization.service";
 
+export function getApiBaseUrl(): string {
+  if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, "");
+  }
+  return "";
+}
+
 export class ApiClient {
   public static async createRoom(params: {
     hostName: string;
@@ -13,7 +20,7 @@ export class ApiClient {
     settings?: Partial<GameSettings>;
     isPaidSession?: boolean;
   }): Promise<{ room: RoomSession; host: PlayerSession }> {
-    const res = await fetch("/api/rooms", {
+    const res = await fetch(`${getApiBaseUrl()}/api/rooms`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(params),
@@ -30,7 +37,7 @@ export class ApiClient {
     resolution?: RoundVoteResolution | null;
     consequence?: any;
   }> {
-    const res = await fetch(`/api/rooms/${code.toUpperCase()}`);
+    const res = await fetch(`${getApiBaseUrl()}/api/rooms/${code.toUpperCase()}`);
     const data = await res.json();
     if (!data.success) throw new Error(data.error);
     return data;
@@ -41,7 +48,7 @@ export class ApiClient {
     playerName: string,
     avatar: AvatarKey
   ): Promise<{ room: RoomSession; player: PlayerSession }> {
-    const res = await fetch(`/api/rooms/${code.toUpperCase()}/join`, {
+    const res = await fetch(`${getApiBaseUrl()}/api/rooms/${code.toUpperCase()}/join`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ playerName, avatar }),
@@ -57,7 +64,7 @@ export class ApiClient {
     action: string,
     payload: Record<string, unknown> = {}
   ): Promise<Record<string, unknown>> {
-    const res = await fetch(`/api/rooms/${code.toUpperCase()}/action`, {
+    const res = await fetch(`${getApiBaseUrl()}/api/rooms/${code.toUpperCase()}/action`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, playerId, payload }),
@@ -93,11 +100,24 @@ export class ApiClient {
     await this.sendAction(code, playerId, "TRIGGER_EMOJI_REACTION", { emoji });
   }
 
+  public static async updateSettings(
+    code: string,
+    playerId: string,
+    settings: Partial<GameSettings>
+  ): Promise<{ room: RoomSession }> {
+    const res = await this.sendAction(code, playerId, "UPDATE_SETTINGS", { settings });
+    return res as unknown as { room: RoomSession };
+  }
+
+  public static async activateHostPass(code: string, playerId: string): Promise<void> {
+    await this.sendAction(code, playerId, "ACTIVATE_HOST_PASS");
+  }
+
   public static async getCatalog(): Promise<{
     scenarios: ScenarioDefinition[];
     pricingTiers: HostPassProduct[];
   }> {
-    const res = await fetch("/api/rooms");
+    const res = await fetch(`${getApiBaseUrl()}/api/rooms`);
     return res.json();
   }
 }

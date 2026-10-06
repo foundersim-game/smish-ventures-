@@ -12,11 +12,16 @@ import {
   LogOut,
   Bot,
   UserPlus,
+  Crown,
+  Sparkles,
 } from "lucide-react";
 import { PlayerSession } from "../core/types/player.types";
 import { RoomSession } from "../core/types/room.types";
 import { AvatarBadge } from "../components/atoms/AvatarBadge";
 import { ChaosButton } from "../components/atoms/ChaosButton";
+import { AdBannerSlot } from "../components/molecules/AdBannerSlot";
+import { HostPassModal } from "../components/organisms/HostPassModal";
+import { PlayerStorage } from "../services/storage/player-storage";
 import { audio } from "../services/audio/audio-manager";
 import { haptics } from "../services/haptics/haptics-manager";
 
@@ -29,6 +34,7 @@ interface LobbyScreenProps {
   onEditSettings?: () => void;
   onAddBot?: () => void;
   onKickPlayer?: (playerId: string) => void;
+  onActivatePass?: () => void;
 }
 
 export const LobbyScreen: React.FC<LobbyScreenProps> = ({
@@ -40,9 +46,11 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
   onEditSettings,
   onAddBot,
   onKickPlayer,
+  onActivatePass,
 }) => {
   const [copied, setCopied] = useState(false);
   const [loadingBot, setLoadingBot] = useState(false);
+  const [showHostPass, setShowHostPass] = useState(false);
   const isHost = room.hostId === currentPlayerId;
   const minRequired = room.mode === "couples" ? 2 : (room.settings.minPlayers || 3);
   const targetPlayers =
@@ -104,7 +112,20 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
     <div className="relative min-h-screen w-full flex flex-col justify-between px-5 pt-8 pb-6 bg-[#090310] select-none">
       {/* Top Bar */}
       <header className="relative w-full flex items-center justify-between z-10">
-        <div className="w-10" />
+        {room.isPaidSession ? (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-black uppercase tracking-wider shadow">
+            <Sparkles className="w-3.5 h-3.5 text-emerald-300" />
+            <span>AD-FREE ROOM</span>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowHostPass(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-400/20 border border-amber-400/50 text-amber-300 text-xs font-bold active:scale-95 transition-all cursor-pointer shadow-[0_0_12px_rgba(251,191,36,0.2)]"
+          >
+            <Crown className="w-3.5 h-3.5 text-yellow-300 fill-yellow-300" />
+            <span>GO AD-FREE ($0.99)</span>
+          </button>
+        )}
 
         <button
           onClick={onLeaveRoom}
@@ -306,6 +327,29 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
           </div>
         )}
       </div>
+
+      {/* Non-intrusive Ad Banner Slot for Free Sessions */}
+      <div className="w-full max-w-sm mx-auto mt-3">
+        <AdBannerSlot
+          isAdEligible={!room.isPaidSession}
+          onRemoveAdsClick={() => setShowHostPass(true)}
+        />
+      </div>
+
+      <HostPassModal
+        isOpen={showHostPass}
+        roomCode={room.roomCode}
+        hostPlayerId={room.hostId}
+        onClose={() => setShowHostPass(false)}
+        onPassActivated={(product) => {
+          if (product === "shared") {
+            PlayerStorage.activatePass("shared_viral", 1);
+          } else {
+            PlayerStorage.activatePass(product.id, product.hostedGamesCount);
+          }
+          onActivatePass?.();
+        }}
+      />
     </div>
   );
 };

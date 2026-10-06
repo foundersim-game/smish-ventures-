@@ -85,7 +85,7 @@ export const COUPLES_WHO_KNOWS_WHO_SCENARIO: ScenarioDefinition = {
       roundIndex: 2,
       category: "couples",
       difficulty: "spicy",
-      prompt: "Inside the private study, you uncover a hidden wall safe containing ₹50,00,000 in untraceable cash, a vintage revolver with 2 bullets, and a guest ledger with YOUR NAMES circled in red ink! Footsteps are creaking on the stairs above. What do WE take?",
+      prompt: "Inside the private study, you uncover a hidden wall safe containing $500,000 in untraceable cash, a vintage revolver with 2 bullets, and a guest ledger with YOUR NAMES circled in red ink! Footsteps are creaking on the stairs above. What do WE take?",
       question: "What do we take before running?",
       discussionDurationSeconds: 60,
       options: [
@@ -97,7 +97,7 @@ export const COUPLES_WHO_KNOWS_WHO_SCENARIO: ScenarioDefinition = {
         },
         {
           id: "B",
-          label: "Shove the ₹50,00,000 cash into your trench-coat",
+          label: "Shove the $500,000 cash into your trench-coat",
           subtitle: "If we're being framed, we might as well fund our defense.",
           badgeColor: "blue",
         },

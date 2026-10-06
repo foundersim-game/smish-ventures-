@@ -14,6 +14,8 @@ import { ScenarioDefinition } from "../core/types/scenario.types";
 import { GameMode } from "../core/types/room.types";
 import { ScenarioRegistry } from "../backend/data/scenarios";
 import { ChaosButton } from "../components/atoms/ChaosButton";
+import { HostPassModal } from "../components/organisms/HostPassModal";
+import { PlayerStorage } from "../services/storage/player-storage";
 import { audio } from "../services/audio/audio-manager";
 import { haptics } from "../services/haptics/haptics-manager";
 
@@ -55,6 +57,7 @@ export const ScenarioSelectScreen: React.FC<ScenarioSelectScreenProps> = ({
   const [activeTab, setActiveTab] = useState<"free" | "premium">("free");
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>(defaultScenario.id);
   const [previewScenario, setPreviewScenario] = useState<ScenarioDefinition | null>(null);
+  const [showHostPassModal, setShowHostPassModal] = useState<boolean>(false);
 
   // Scenarios strictly filtered by mode (couples vs party) and tier (free vs premium)
   const scenarios = ScenarioRegistry.getScenariosForMode(mode, activeTab);
@@ -218,7 +221,7 @@ export const ScenarioSelectScreen: React.FC<ScenarioSelectScreenProps> = ({
                     {sc.isPremium && (
                       <span className="px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[10px] font-bold border border-amber-400/30 flex items-center gap-1">
                         <Crown className="w-2.5 h-2.5 text-yellow-300" />
-                        <span>{sc.priceTier || "₹99"}</span>
+                        <span>{sc.priceTier || "$2.99"}</span>
                       </span>
                     )}
                   </div>
@@ -288,7 +291,7 @@ export const ScenarioSelectScreen: React.FC<ScenarioSelectScreenProps> = ({
               {previewScenario.isPremium ? (
                 <span className="px-2.5 py-0.5 rounded-full bg-purple-500/30 text-purple-300 text-[10px] font-extrabold uppercase tracking-wider border border-purple-400/40 inline-flex items-center gap-1">
                   <Crown className="w-3 h-3 text-yellow-300" />
-                  {previewScenario.priceTier || "₹99"} PREMIUM PACK
+                  {previewScenario.priceTier || "$2.99"} PREMIUM PACK
                 </span>
               ) : (
                 <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/30 text-emerald-300 text-[10px] font-extrabold uppercase tracking-wider border border-emerald-400/40">
@@ -406,13 +409,40 @@ export const ScenarioSelectScreen: React.FC<ScenarioSelectScreenProps> = ({
               ) : undefined
             }
             rightIcon={<ChevronRight className="w-5 h-5 text-white/90" />}
-            onClick={() => onSelectScenario(previewScenario)}
+            onClick={() => {
+              if (previewScenario.isPremium) {
+                const pass = PlayerStorage.getHostPass();
+                const isUnlocked = pass.hasPass || pass.unlockedPacks.includes(previewScenario.id);
+                if (!isUnlocked) {
+                  setShowHostPassModal(true);
+                  return;
+                }
+              }
+              onSelectScenario(previewScenario);
+            }}
           >
             {previewScenario.isPremium
-              ? `PLAY THIS PACK (${previewScenario.priceTier || "₹99"})`
+              ? `PLAY THIS PACK (${previewScenario.priceTier || "$2.99"})`
               : "SELECT THIS CHAOS"}
           </ChaosButton>
         </div>
+      )}
+
+      {/* Host Pass / Monetization & Viral Share Modal */}
+      {previewScenario && (
+        <HostPassModal
+          isOpen={showHostPassModal}
+          packTitle={previewScenario.title}
+          onClose={() => setShowHostPassModal(false)}
+          onPassActivated={(product) => {
+            if (product === "shared") {
+              PlayerStorage.activatePass("shared_viral", 1, previewScenario.id);
+            } else {
+              PlayerStorage.activatePass(product.id, product.hostedGamesCount, previewScenario.id);
+            }
+            onSelectScenario(previewScenario);
+          }}
+        />
       )}
     </div>
   );

@@ -3,6 +3,7 @@ import { AlertTriangle, TrendingDown, Zap, ChevronRight, Coins } from "lucide-re
 import { RoomSession } from "../core/types/room.types";
 import { ScenarioRound } from "../core/types/scenario.types";
 import { TopHeader } from "../components/molecules/TopHeader";
+import { AdBannerSlot } from "../components/molecules/AdBannerSlot";
 import { audio } from "../services/audio/audio-manager";
 import { haptics } from "../services/haptics/haptics-manager";
 
@@ -19,6 +20,7 @@ interface ConsequenceScreenProps {
   onProceedToBlame: () => void;
   onNextRound: () => void;
   onLeave: () => void;
+  onRemoveAdsClick?: () => void;
 }
 
 export const ConsequenceScreen: React.FC<ConsequenceScreenProps> = ({
@@ -29,6 +31,7 @@ export const ConsequenceScreen: React.FC<ConsequenceScreenProps> = ({
   onProceedToBlame,
   onNextRound,
   onLeave,
+  onRemoveAdsClick,
 }) => {
   // Prefer live consequence data from backend (CONSEQUENCE_RESOLVED event),
   // fall back to static scenario data
@@ -171,7 +174,7 @@ export const ConsequenceScreen: React.FC<ConsequenceScreenProps> = ({
                     : "bg-green-500/20 border border-green-400/50 text-green-300"
                 }`}
               >
-                {isNegative ? "" : "+"}₹{balanceDelta.toLocaleString()}
+                {isNegative ? "" : "+"}${balanceDelta.toLocaleString()}
               </span>
             </div>
           )}
@@ -181,7 +184,7 @@ export const ConsequenceScreen: React.FC<ConsequenceScreenProps> = ({
             <div className="mt-2.5 p-3 rounded-2xl bg-black/50 border border-amber-400/40 flex items-center justify-between">
               <span className="text-xs font-bold text-gray-300">Remaining Squad Balance:</span>
               <span className="font-display font-black text-lg text-[#FFD23F] transition-all duration-500">
-                ₹{displayedBalance.toLocaleString()}
+                ${displayedBalance.toLocaleString()}
               </span>
             </div>
           )}
@@ -205,6 +208,12 @@ export const ConsequenceScreen: React.FC<ConsequenceScreenProps> = ({
           <span>Skip to Next Round</span>
           <ChevronRight className="w-4 h-4 text-gray-400" />
         </button>
+
+        {/* Non-intrusive Ad Banner Slot */}
+        <AdBannerSlot
+          isAdEligible={!room.isPaidSession}
+          onRemoveAdsClick={onRemoveAdsClick}
+        />
       </div>
     </div>
   );

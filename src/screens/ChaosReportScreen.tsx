@@ -1,16 +1,20 @@
-import React from "react";
-import { Share2, RotateCcw, Home, Sparkles, Shield, Flame } from "lucide-react";
+import React, { useState } from "react";
+import { Share2, RotateCcw, Home, Sparkles, Shield, Flame, Crown, Gift, Check, MessageSquare } from "lucide-react";
 import { ChaosReportSummary } from "../core/types/scoring.types";
 import { ChaosButton } from "../components/atoms/ChaosButton";
 import { ChaosLogo } from "../components/atoms/ChaosLogo";
+import { AdBannerSlot } from "../components/molecules/AdBannerSlot";
 import { audio } from "../services/audio/audio-manager";
 import { haptics } from "../services/haptics/haptics-manager";
+import { AnalyticsService } from "../services/analytics/analytics.service";
 
 interface ChaosReportScreenProps {
   report: ChaosReportSummary;
   currentPlayerId: string;
   onPlayAgain: () => void;
   onGoHome: () => void;
+  isPaidSession?: boolean;
+  onRemoveAdsClick?: () => void;
 }
 
 export const ChaosReportScreen: React.FC<ChaosReportScreenProps> = ({
@@ -18,33 +22,52 @@ export const ChaosReportScreen: React.FC<ChaosReportScreenProps> = ({
   currentPlayerId,
   onPlayAgain,
   onGoHome,
+  isPaidSession = false,
+  onRemoveAdsClick,
 }) => {
+  const [copiedToast, setCopiedToast] = useState<string | null>(null);
   const myTitle = report.playerTitles[currentPlayerId] || "THE DIPLOMAT";
 
   const handleShare = async () => {
     audio.play("fanfare");
     haptics.trigger("chaos_moment");
+    AnalyticsService.trackEvent("recap_shared", {
+      reportRoomId: report.roomId,
+      damageDestroyed: report.totalResourcesDestroyed,
+    });
 
-    const shareText = `${report.totalPlayers} PEOPLE ENTERED. ${report.totalMindChanges} MINDS CHANGED. ${report.mostInfluentialName} CAUSED THE MOST CHAOS! WHO'S HOSTING NEXT? Play CHAOS now!`;
+    const base = typeof window !== "undefined" && window.location.pathname.startsWith("/chaos") ? "/chaos" : "";
+    const shareUrl = typeof window !== "undefined" ? `${window.location.origin}${base}` : "https://playchaos.app";
+    const shareText = `🚨 CHAOS REPORT: GAME OVER 🚨\n💥 Total Damage: $${report.totalResourcesDestroyed.toLocaleString()} destroyed\n👑 Most Influential: ${report.mostInfluentialName}\n🐑 The Sheep: ${report.theSheepName}\n💀 Most Blamed: ${report.mostBlamedName}\nWho's hosting next? Play CHAOS with your crew 👉 ${shareUrl}`;
 
-    if (navigator.share) {
+    if (typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share({
-          title: "Our CHAOS Report",
+          title: "Our Squad CHAOS Report",
           text: shareText,
-          url: window.location.origin,
+          url: shareUrl,
         });
+        setCopiedToast("🎉 Recap sent! Drop it in your squad group chat.");
+        setTimeout(() => setCopiedToast(null), 3500);
       } catch {
-        // Ignored
+        // Ignored or cancelled
       }
-    } else {
+    } else if (typeof navigator !== "undefined" && navigator.clipboard) {
       await navigator.clipboard.writeText(shareText);
-      alert("CHAOS Report copied to clipboard!");
+      setCopiedToast("📋 Recap copied to clipboard! Paste it into your group chat.");
+      setTimeout(() => setCopiedToast(null), 3500);
     }
   };
 
   return (
     <div className="relative min-h-screen w-full flex flex-col justify-between px-5 pt-8 pb-6 bg-[#090310] select-none">
+      {/* Toast Notification */}
+      {copiedToast && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold shadow-xl border border-pink-400/50 max-w-xs text-center animate-fade-in">
+          {copiedToast}
+        </div>
+      )}
+
       {/* Top Header */}
       <div className="flex flex-col items-center text-center">
         <ChaosLogo size="sm" />
@@ -74,7 +97,7 @@ export const ChaosReportScreen: React.FC<ChaosReportScreenProps> = ({
           </div>
           <div>
             <span className="font-display font-black text-2xl text-yellow-400 block">
-              ₹{report.totalResourcesDestroyed.toLocaleString()}
+              ${report.totalResourcesDestroyed.toLocaleString()}
             </span>
             <span className="text-[10px] text-gray-400 font-bold uppercase">Destroyed</span>
           </div>
@@ -132,6 +155,24 @@ export const ChaosReportScreen: React.FC<ChaosReportScreenProps> = ({
             {myTitle}
           </h2>
         </div>
+
+        {/* Viral Player-to-Host Acquisition Hook */}
+        <div className="mt-4 p-3 rounded-2xl bg-gradient-to-r from-purple-950/90 via-pink-950/70 to-purple-950/90 border border-pink-500/30 text-center">
+          <div className="flex items-center justify-center gap-1 text-[11px] font-black uppercase text-pink-300 tracking-wider mb-1">
+            <Sparkles className="w-3.5 h-3.5 text-pink-400" />
+            <span>HOST YOUR NEXT PARTY</span>
+          </div>
+          <p className="text-gray-300 text-[11px] leading-snug mb-2">
+            Loved the chaos? Create a room and invite your friends for free!
+          </p>
+          <button
+            onClick={onPlayAgain}
+            className="w-full py-2 rounded-xl bg-gradient-to-r from-pink-600 via-rose-600 to-red-600 text-white font-display font-black text-xs uppercase tracking-wider shadow active:scale-95 transition-transform flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <Crown className="w-3.5 h-3.5 text-yellow-300" />
+            <span>CREATE A GAME (FREE)</span>
+          </button>
+        </div>
       </div>
 
       {/* Action Buttons */}
@@ -139,10 +180,10 @@ export const ChaosReportScreen: React.FC<ChaosReportScreenProps> = ({
         <ChaosButton
           variant="primary"
           size="lg"
-          icon={<Share2 className="w-5 h-5 text-white" />}
+          icon={<MessageSquare className="w-5 h-5 text-white" />}
           onClick={handleShare}
         >
-          SHARE CHAOS
+          SHARE SQUAD RECAP
         </ChaosButton>
 
         <div className="flex gap-2">
@@ -163,6 +204,14 @@ export const ChaosReportScreen: React.FC<ChaosReportScreenProps> = ({
           >
             HOME
           </ChaosButton>
+        </div>
+
+        {/* Bottom Ad Banner Slot */}
+        <div className="w-full max-w-sm mx-auto mt-2">
+          <AdBannerSlot
+            isAdEligible={!isPaidSession}
+            onRemoveAdsClick={onRemoveAdsClick}
+          />
         </div>
       </div>
     </div>

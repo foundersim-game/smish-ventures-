@@ -86,17 +86,23 @@ export const InitialVoteScreen: React.FC<InitialVoteScreenProps> = ({
           {/* Dynamic Squad Resource Balance (Only for rounds/scenarios tracking money) */}
           {Boolean(
             typeof room.resourceState?.balance === "number" &&
-            (round.highlightedText?.includes("₹") ||
+            (round.highlightedText?.includes("$") ||
+             round.highlightedText?.includes("₹") ||
+             round.prompt.includes("$") ||
              round.prompt.includes("₹") ||
+             round.question?.includes("$") ||
              round.question?.includes("₹") ||
              room.scenarioId === "night_out_01" ||
              room.scenarioId === "travel_chaos" ||
-             room.scenarioId === "goa_weekend")
+             room.scenarioId === "quick_chaos" ||
+             room.scenarioId === "goa_weekend" ||
+             room.scenarioId === "college_chaos" ||
+             room.scenarioId === "wedding_chaos")
           ) && (
             <div className="mt-2.5 px-3 py-1.5 rounded-xl bg-black/40 border border-amber-400/40 inline-flex items-center gap-2">
               <span className="text-gray-300 text-xs font-semibold">Squad Balance:</span>
               <span className="font-display font-black text-[#FFD23F] text-sm">
-                ₹{room.resourceState.balance?.toLocaleString()}
+                ${room.resourceState.balance?.toLocaleString()}
               </span>
             </div>
           )}

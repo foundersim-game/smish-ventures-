@@ -2,10 +2,10 @@ import { ScenarioDefinition } from "../../../core/types/scenario.types";
 
 export const ABSURD_SCENARIO: ScenarioDefinition = {
   id: "absurd_chaos",
-  title: "ABSURD CHAOS: THE BILLIONAIRE'S ESCAPE VAULT",
+  title: "ABSURD CHAOS: THE $100M BILLIONAIRE VAULT",
   category: "absurd",
-  tagline: "10 connected rounds: Eccentric wills, laser mazes, strawberry milkshake floods & ₹100 Crores.",
-  description: "A continuous 10-round thriller comedy. Locked inside an eccentric billionaire's automated smart-mansion, your squad must survive 10 ridiculous trials to inherit ₹100 Crores.",
+  tagline: "10 connected rounds: Eccentric wills, laser mazes, strawberry milkshake floods & $100 Million.",
+  description: "A continuous 10-round thriller comedy. Locked inside an eccentric billionaire's automated smart-mansion, your squad must survive 10 ridiculous trials to inherit $100 Million.",
   estimatedMinutes: "20 - 35 min",
   recommendedPlayers: "4 - 10 players",
   totalRounds: 10,
@@ -33,14 +33,14 @@ export const ABSURD_SCENARIO: ScenarioDefinition = {
       roundIndex: 1,
       category: "absurd",
       difficulty: "spicy",
-      prompt: "Midnight in a gothic cliffside mansion. The estate lawyer reads the will of eccentric tech billionaire Viktor Vance: 'To this friend group, I leave my entire ₹100 Crore estate. On ONE condition: you must complete the 10 trials of character inside my automated mansion tonight.'",
+      prompt: "Midnight in a gothic cliffside mansion. The estate lawyer reads the will of eccentric tech billionaire Viktor Vance: 'To this friend group, I leave my entire $100 Million estate. On ONE condition: you must complete the 10 trials of character inside my automated mansion tonight.'",
       question: "Does the group sign the blood-red contract to start the trials?",
-      highlightedText: "₹100 Crore Inheritance Will",
+      highlightedText: "$100 Million Inheritance Will",
       discussionDurationSeconds: 60,
       options: [
         {
           id: "A",
-          label: "Sign immediately with zero hesitation: We want the ₹100 Crores",
+          label: "Sign immediately with zero hesitation: We want the $100 Million",
           subtitle: "Generational wealth. How hard could an escape mansion be?",
           badgeColor: "pink",
         },
@@ -297,7 +297,7 @@ export const ABSURD_SCENARIO: ScenarioDefinition = {
         {
           id: "A",
           label: "Name the undisputed freeloader honestly and without mercy",
-          subtitle: "We all know who it is. Truth sets us free for ₹100 Crores.",
+          subtitle: "We all know who it is. Truth sets us free for $100 Million.",
           badgeColor: "pink",
         },
         {
@@ -480,7 +480,7 @@ export const ABSURD_SCENARIO: ScenarioDefinition = {
       roundIndex: 8,
       category: "absurd",
       difficulty: "spicy",
-      prompt: "Trial 7: THE SABOTEUR REVEAL! As you step into the express elevator, red emergency lights pulse! ALFRED-9000 announces: 'A traitor walks among you! One player was given a secret override master key in their sneaker to steal the entire ₹100 Crores alone!'",
+      prompt: "Trial 7: THE SABOTEUR REVEAL! As you step into the express elevator, red emergency lights pulse! ALFRED-9000 announces: 'A traitor walks among you! One player was given a secret override master key in their sneaker to steal the entire $100 Million alone!'",
       question: "How does the squad find and handle the sneaker saboteur?",
       highlightedText: "Sneaker Saboteur Alert",
       discussionDurationSeconds: 60,
@@ -607,9 +607,9 @@ export const ABSURD_SCENARIO: ScenarioDefinition = {
       roundIndex: 10,
       category: "absurd",
       difficulty: "spicy",
-      prompt: "GRAND FINALE: THE VAULT OF CRORES. The helipad center splits open, rising with the final titanium chamber. Inside sits a digital terminal showing: ₹100,00,00,000.00. Viktor Vance's hologram appears in a silk tuxedo: 'You survived all 10 trials. Claim your destiny.'",
-      question: "How does the squad execute the ₹100 Crore claim?",
-      highlightedText: "₹100 Crore Final Claim",
+      prompt: "GRAND FINALE: THE VAULT OF MILLIONS. The helipad center splits open, rising with the final titanium chamber. Inside sits a digital terminal showing: $100,000,000.00. Viktor Vance's hologram appears in a silk tuxedo: 'You survived all 10 trials. Claim your destiny.'",
+      question: "How does the squad execute the $100 Million claim?",
+      highlightedText: "$100 Million Final Claim",
       discussionDurationSeconds: 60,
       secretIntelRule: {
         targetPlayerCount: 1,
@@ -638,17 +638,17 @@ export const ABSURD_SCENARIO: ScenarioDefinition = {
         {
           id: "D",
           label: "Put it all on 00 at the Monte Carlo casino roulette next weekend",
-          subtitle: "₹3,500 Crores or nothing. The ultimate unhinged flex.",
+          subtitle: "$500 Million or nothing. The ultimate unhinged flex.",
           badgeColor: "purple",
         },
       ],
       consequences: {
         A: {
           title: "GENERATIONAL WEALTH UNLOCKED",
-          narrative: "DINGS! Bank accounts credited with ₹10+ Crores each! The squad embraced on the rooftop under the sunrise. You won the game of life!",
+          narrative: "DINGS! Bank accounts credited with $10+ Million each! The squad embraced on the rooftop under the sunrise. You won the game of life!",
           resourceDelta: { sanity: 50, chaosScore: 20 },
           triggerChaosMoment: true,
-          chaosMomentMessage: "₹100 CRORES TRANSFERRED! YOU SURVIVED THE VAULT!",
+          chaosMomentMessage: "$100 MILLION TRANSFERRED! YOU SURVIVED THE VAULT!",
         },
         B: {
           title: "CHAOS WORLD OPENS 2027",

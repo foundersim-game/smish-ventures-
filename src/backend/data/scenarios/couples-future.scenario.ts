@@ -10,7 +10,7 @@ export const COUPLES_FUTURE_SCENARIO: ScenarioDefinition = {
   recommendedPlayers: "2 players",
   totalRounds: 4,
   isPremium: true,
-  priceTier: "₹99",
+  priceTier: "$2.99",
   vibeTag: "💍 REALITY CHECK",
   vibeColor: "purple",
   goodFor: "Couples planning their future, playful reality checks, fun arguments.",
@@ -111,7 +111,7 @@ export const COUPLES_FUTURE_SCENARIO: ScenarioDefinition = {
         {
           id: "D",
           label: "Court Marriage + Spend the Entire Budget on Traveling",
-          subtitle: "₹25 Lakh budget redirected straight to a 6-month honeymoon.",
+          subtitle: "$30,000 budget redirected straight to a 6-month honeymoon.",
           badgeColor: "purple",
         },
       ],

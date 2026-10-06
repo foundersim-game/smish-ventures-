@@ -35,10 +35,12 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({
   const isCouples =
     scenario.category === "couples" || scenario.id.startsWith("couples");
 
+  const maxRoundsAvailable = scenario.rounds?.length || scenario.totalRounds || 4;
+
   const [numPlayers, setNumPlayers] = useState(isCouples ? 2 : 6);
   const [roundTime, setRoundTime] = useState<number>(60);
   const [numRounds, setNumRounds] = useState<number>(
-    scenario.totalRounds || (isCouples ? 4 : 6)
+    Math.min(scenario.totalRounds || 4, maxRoundsAvailable)
   );
   const [difficulty, setDifficulty] = useState<DifficultyLevel>("normal");
   const [intensity, setIntensity] = useState<ChaosIntensity>(
@@ -231,10 +233,10 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({
             }}
             className="bg-purple-950/80 border border-purple-700/60 rounded-xl px-3 py-1.5 text-xs font-bold text-white outline-none cursor-pointer"
           >
-            <option value={4}>4 rounds (Quick ~15m)</option>
-            <option value={6}>6 rounds (Standard ~25m)</option>
-            <option value={8}>8 rounds (Deep Chaos ~35m)</option>
-            <option value={10}>10 rounds (Full Story ~45m)</option>
+            <option value={4}>4 rounds ({maxRoundsAvailable === 4 ? "Full Pack" : "Quick"} ~15m)</option>
+            {maxRoundsAvailable >= 6 && <option value={6}>6 rounds (Standard ~25m)</option>}
+            {maxRoundsAvailable >= 8 && <option value={8}>8 rounds (Deep Chaos ~35m)</option>}
+            {maxRoundsAvailable >= 10 && <option value={10}>10 rounds (Full Story ~45m)</option>}
           </select>
         </div>
 

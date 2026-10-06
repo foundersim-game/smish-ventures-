@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   HelpCircle,
   Settings,
@@ -8,6 +9,10 @@ import {
   Trophy,
   ShoppingBag,
   User,
+  Heart,
+  Sparkles,
+  X,
+  Lock,
 } from "lucide-react";
 import { SettingsModal } from "../components/organisms/SettingsModal";
 import { HowToPlayModal } from "../components/organisms/HowToPlayModal";
@@ -31,6 +36,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [showSettings, setShowSettings] = useState(false);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showCouplesModal, setShowCouplesModal] = useState(false);
   const [profile, setProfile] = useState<StoredProfile>({ name: "Player", avatar: "crown" });
 
   useEffect(() => {
@@ -50,9 +56,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   };
 
   const handleCouples = () => {
-    audio.play("click");
-    haptics.trigger("heavy");
-    onCouplesMode();
+    audio.play("invalid");
+    haptics.trigger("warning");
+    setShowCouplesModal(true);
   };
 
   const avatarDef = getAvatarDefinition(profile.avatar);
@@ -167,25 +173,30 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <ChevronRight className="w-5 h-5 text-white/80" />
           </button>
 
-          {/* 3. COUPLES MODE Button */}
+          {/* 3. COUPLES MODE Button (Locked to Coming Soon) */}
           <button
             onClick={handleCouples}
-            className="w-full p-4 rounded-3xl bg-gradient-to-r from-[#D91B5C] via-[#B51049] to-[#8E0937] border-2 border-pink-400/40 shadow-[0_8px_24px_rgba(236,72,153,0.35)] flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer text-left"
+            className="w-full p-4 rounded-3xl bg-gradient-to-r from-[#D91B5C]/80 via-[#B51049]/80 to-[#8E0937]/80 border-2 border-pink-500/40 shadow-[0_8px_24px_rgba(236,72,153,0.25)] flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer text-left relative overflow-hidden"
           >
             <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-pink-500 to-rose-400 p-2 flex items-center justify-center shadow-[0_0_16px_rgba(244,114,182,0.6)]">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-pink-500 to-rose-400 p-2 flex items-center justify-center shadow-[0_0_16px_rgba(244,114,182,0.5)]">
                 <span className="text-2xl filter drop-shadow">💖</span>
               </div>
               <div>
-                <h3 className="font-display font-black text-lg text-white tracking-wide">
-                  COUPLES MODE
-                </h3>
-                <p className="text-pink-100 text-xs font-medium">
-                  Just the two of you
+                <div className="flex items-center gap-2">
+                  <h3 className="font-display font-black text-lg text-white tracking-wide">
+                    COUPLES MODE
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full bg-pink-400/20 border border-pink-400/40 text-[9px] font-black tracking-wider text-pink-300 uppercase shadow-sm">
+                    COMING SOON
+                  </span>
+                </div>
+                <p className="text-pink-100/75 text-xs font-medium mt-0.5">
+                  Dedicated 2-player mode • Teaser preview
                 </p>
               </div>
             </div>
-            <ChevronRight className="w-5 h-5 text-white/80" />
+            <Lock className="w-4 h-4 text-pink-300/80 mr-1" />
           </button>
         </div>
       </main>
@@ -238,6 +249,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <span className="text-[10px]">Store</span>
           </button>
         </div>
+
+        {/* Legal & Compliance Links */}
+        <div className="flex items-center justify-center gap-3 pt-2 text-[10px] text-gray-400 font-medium select-none">
+          <Link href="/privacy" className="hover:text-amber-300 transition-colors">
+            Privacy Policy
+          </Link>
+          <span>•</span>
+          <Link href="/terms" className="hover:text-amber-300 transition-colors">
+            Terms of Service
+          </Link>
+        </div>
       </footer>
 
       {/* Modals */}
@@ -251,6 +273,62 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         }}
         onSaved={(name, avatar) => setProfile({ name, avatar })}
       />
+
+      {/* Couples Mode Coming Soon Modal */}
+      {showCouplesModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md select-none animate-fade-in">
+          <div className="relative w-full max-w-sm rounded-3xl bg-[#17051C] border-2 border-pink-500/50 p-6 shadow-2xl flex flex-col items-center text-center">
+            <button
+              onClick={() => setShowCouplesModal(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-gray-300 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-pink-500 to-rose-400 p-3.5 flex items-center justify-center shadow-[0_0_24px_rgba(244,114,182,0.6)] mb-4">
+              <span className="text-3xl">💖</span>
+            </div>
+
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-pink-500/20 border border-pink-500/40 text-pink-300 text-xs font-display font-extrabold uppercase tracking-widest mb-2 shadow-[0_0_12px_rgba(236,72,153,0.3)]">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>COMING SOON</span>
+            </div>
+
+            <h2 className="font-display font-black text-2xl text-white tracking-tight">
+              COUPLES <span className="text-pink-400">CHAOS</span>
+            </h2>
+
+            <p className="text-gray-300 text-xs mt-2 leading-relaxed max-w-xs">
+              A dedicated 2-player experience crafted for partners. Playful disagreements, secret partner predictions, &ldquo;Same Brain&rdquo; challenges, and surprising relationship reveals.
+            </p>
+
+            <div className="w-full my-4 p-3 rounded-2xl bg-pink-950/40 border border-pink-800/40 text-left text-xs space-y-2">
+              <div className="flex items-center gap-2 text-pink-200">
+                <span>🎯</span>
+                <span className="font-medium"><strong>Who Knows Who:</strong> Predict your partner&apos;s answer</span>
+              </div>
+              <div className="flex items-center gap-2 text-pink-200">
+                <span>🧠</span>
+                <span className="font-medium"><strong>Same Brain:</strong> Rank dilemmas and compare alignment</span>
+              </div>
+              <div className="flex items-center gap-2 text-pink-200">
+                <span>🔥</span>
+                <span className="font-medium"><strong>No Therapy:</strong> 100% comedy, fun & laughter</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                setShowCouplesModal(false);
+                onCreateParty();
+              }}
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-pink-600 via-rose-600 to-red-600 text-white font-display font-black text-sm uppercase tracking-wider shadow-[0_8px_20px_rgba(236,72,153,0.4)] active:scale-95 transition-all"
+            >
+              PLAY PARTY MODE WITH CREW
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
