@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "CHAOS — Make a Decision, Deal with the CHAOS",
-  description: "High-stakes party card game of bluffing, voting, and shifting loyalties by SMISH Ventures.",
+  title: "SMISH Ventures — Deep Simulation & Social Party Games",
+  description: "SMISH Ventures creates deep simulations and high-energy multiplayer experiences. Creators of CHAOS: The Party Game, Founder Sim, and Movie Mogul.",
   icons: {
     icon: "/assets/founder-sim-icon.png",
     shortcut: "/assets/founder-sim-icon.png",
@@ -13,17 +13,14 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "CHAOS",
+    title: "SMISH Ventures",
   },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  viewportFit: "cover",
-  themeColor: "#0A0314",
+  themeColor: "#04060A",
 };
 
 export default function RootLayout({
@@ -36,7 +33,7 @@ export default function RootLayout({
       <head>
         <link rel="stylesheet" href="/style.css" />
       </head>
-      <body className="antialiased bg-[#06010D] text-white h-[100dvh] max-h-[100dvh] overflow-hidden select-none overscroll-none">
+      <body className="antialiased bg-[#04060A] text-white min-h-screen">
         {children}
       </body>
     </html>
