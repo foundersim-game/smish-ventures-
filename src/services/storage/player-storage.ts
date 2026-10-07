@@ -16,7 +16,33 @@ export interface HostPassStatus {
 
 const PASS_STORAGE_KEY = "chaos_host_pass_status";
 
+export interface ActiveSession {
+  roomCode: string;
+  roomId: string;
+  playerId: string;
+  playerName: string;
+  avatar: AvatarKey;
+  isHost: boolean;
+}
+
+const ACTIVE_SESSION_KEY = "chaos_active_session";
+const PLAYER_ID_KEY = "chaos_persistent_player_id";
+
 export class PlayerStorage {
+  public static getOrCreatePlayerId(): string {
+    if (typeof window === "undefined") return "server_player";
+    try {
+      let id = localStorage.getItem(PLAYER_ID_KEY);
+      if (!id) {
+        id = `PLY-${crypto.randomUUID()}`;
+        localStorage.setItem(PLAYER_ID_KEY, id);
+      }
+      return id;
+    } catch {
+      return `PLY-fallback-${Date.now()}`;
+    }
+  }
+
   public static getDeviceId(): string {
     if (typeof window === "undefined") return "dev_server";
     try {
@@ -28,6 +54,35 @@ export class PlayerStorage {
       return id;
     } catch {
       return "dev_fallback";
+    }
+  }
+
+  public static saveActiveSession(session: ActiveSession): void {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(session));
+    } catch {
+      // Ignore
+    }
+  }
+
+  public static getActiveSession(): ActiveSession | null {
+    if (typeof window === "undefined") return null;
+    try {
+      const data = localStorage.getItem(ACTIVE_SESSION_KEY);
+      if (data) return JSON.parse(data);
+    } catch {
+      // Ignore
+    }
+    return null;
+  }
+
+  public static clearActiveSession(): void {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.removeItem(ACTIVE_SESSION_KEY);
+    } catch {
+      // Ignore
     }
   }
 

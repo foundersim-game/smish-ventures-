@@ -57,7 +57,7 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({
 
   const handleStart = () => {
     onStartChaos({
-      minPlayers: isCouples ? 2 : 4,
+      minPlayers: 2,
       maxPlayers: isCouples ? 2 : 10,
       targetPlayers: isCouples ? 2 : numPlayers,
       discussionDurationSeconds: roundTime,
@@ -70,42 +70,45 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({
   const intensityStops: ChaosIntensity[] = ["chill", "balanced", "spicy", "insane"];
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col justify-between px-5 pt-8 pb-6 bg-[#090310] select-none">
+    <div className="relative h-full max-h-[100dvh] w-full flex flex-col justify-between px-3.5 py-1.5 sm:py-2.5 bg-[#090310] select-none overflow-hidden">
       {/* Top Header */}
-      <header className="relative w-full flex items-center justify-between z-10">
+      <header className="relative w-full max-w-sm mx-auto flex items-center justify-between z-10 flex-shrink-0">
         <button
           onClick={onBack}
-          className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-gray-200 active:scale-95 transition-transform"
+          className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-gray-200 active:scale-95 transition-transform"
         >
-          <ChevronLeft className="w-5 h-5" />
+          <ChevronLeft className="w-4 h-4" />
         </button>
 
         {/* 4-Dash Step Indicator */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <div
-            className={`w-8 h-1.5 rounded-full ${
+            className={`w-6 h-1 rounded-full ${
               isCouples ? "bg-pink-500" : "bg-amber-400"
             }`}
           />
           <div
-            className={`w-8 h-1.5 rounded-full ${
+            className={`w-6 h-1 rounded-full ${
               isCouples ? "bg-pink-500" : "bg-amber-400"
             }`}
           />
           <div
-            className={`w-8 h-1.5 rounded-full ${
+            className={`w-6 h-1 rounded-full ${
               isCouples ? "bg-pink-500" : "bg-amber-400"
             }`}
           />
           <div
-            className={`w-8 h-1.5 rounded-full ${
+            className={`w-6 h-1 rounded-full ${
               isCouples ? "bg-pink-500" : "bg-amber-400"
             }`}
           />
         </div>
 
-        <span className="text-xs font-bold text-gray-400">4 / 4</span>
+        <span className="text-[11px] font-bold text-gray-400">4 / 4</span>
       </header>
+
+      {/* Scrollable Settings Form */}
+      <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar max-w-sm mx-auto w-full my-1">
 
       {/* Screen Title */}
       <div className="mt-4 text-center">
@@ -343,9 +346,10 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({
           </div>
         </div>
       </div>
+      </div>
 
       {/* Start Button */}
-      <div className="w-full max-w-sm mx-auto">
+      <div className="w-full max-w-sm mx-auto flex-shrink-0 mb-1">
         <ChaosButton
           variant="primary"
           size="lg"

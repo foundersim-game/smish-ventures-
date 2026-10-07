@@ -87,9 +87,21 @@ export default function ChaosMainApp() {
   const [showConsequenceHostPass, setShowConsequenceHostPass] = useState(false);
   const [hasSeenHalftime, setHasSeenHalftime] = useState(false);
 
-  const eventSourceRef = useRef<EventSource | null>(null);
+  // Active Session Persistence State
+  const [activeSession, setActiveSession] = useState<import("@/services/storage/player-storage").ActiveSession | null>(null);
 
-  // Initialize profile & detect URL join query (?join=ABCD)
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const roomRef = useRef<RoomSession | null>(room);
+  const viewRef = useRef<ViewState>(view);
+  const currentPlayerRef = useRef<PlayerSession | null>(currentPlayer);
+
+  useEffect(() => {
+    roomRef.current = room;
+    viewRef.current = view;
+    currentPlayerRef.current = currentPlayer;
+  }, [room, view, currentPlayer]);
+
+  // Initialize profile & detect URL join query (?join=ABCD) & restore live sessions
   useEffect(() => {
     const profile = PlayerStorage.getProfile();
     setCurrentPlayer({
@@ -119,6 +131,9 @@ export default function ChaosMainApp() {
       lastSeenAt: Date.now(),
     });
 
+    const savedSession = PlayerStorage.getActiveSession();
+    setActiveSession(savedSession);
+
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const code = params.get("join");
@@ -129,6 +144,52 @@ export default function ChaosMainApp() {
       if (code) {
         setPrefilledJoinCode(code.toUpperCase());
         setView("join");
+      } else if (savedSession?.roomCode) {
+        // Attempt seamless reconnection on page refresh
+        ApiClient.getRoom(savedSession.roomCode)
+          .then((fresh) => {
+            if (fresh?.room) {
+              if (
+                fresh.room.phase === "chaos_report" ||
+                Date.now() - fresh.room.createdAt > 4 * 60 * 60 * 1000
+              ) {
+                PlayerStorage.clearActiveSession();
+                setActiveSession(null);
+                return;
+              }
+
+              const me = fresh.players.find(
+                (p) =>
+                  p.id === savedSession.playerId ||
+                  p.name.trim().toLowerCase() === savedSession.playerName.trim().toLowerCase()
+              );
+
+              if (me) {
+                if (savedSession.isHost || fresh.room.hostId === me.id) {
+                  me.isHost = true;
+                }
+                setRoom(fresh.room);
+                setPlayers(fresh.players);
+                setCurrentPlayer(me);
+                if (fresh.scenario) setSelectedScenario(fresh.scenario);
+                if (fresh.resolution) setResolution(fresh.resolution);
+                if (fresh.consequence) setConsequenceData(fresh.consequence);
+
+                if (fresh.room.phase === "lobby") {
+                  setView("lobby");
+                } else {
+                  setView("gameplay");
+                }
+
+                setJoinToast(`⚡ Reconnected to Room ${fresh.room.roomCode}!`);
+                setTimeout(() => setJoinToast(null), 3000);
+              }
+            }
+          })
+          .catch(() => {
+            PlayerStorage.clearActiveSession();
+            setActiveSession(null);
+          });
       }
     }
 
@@ -137,15 +198,35 @@ export default function ChaosMainApp() {
     NativePaymentService.initialize();
     AnalyticsService.initialize();
 
+    // Prevent accidental browser back button from dumping active games
+    const handlePopState = (e: PopStateEvent) => {
+      if (roomRef.current?.roomCode && viewRef.current !== "home") {
+        e.preventDefault();
+        window.history.pushState(null, "", window.location.href);
+        const confirmLeave = window.confirm(
+          "Are you sure you want to exit to Home? Your seat will remain active so you can rejoin anytime."
+        );
+        if (confirmLeave) {
+          handleLeaveRoom();
+        }
+      }
+    };
+
+    window.history.pushState(null, "", window.location.href);
+    window.addEventListener("popstate", handlePopState);
+
     // Auto-resync when returning from phone lock or app switch
     const handleVisibilitySync = async () => {
       if (document.visibilityState === "visible") {
-        const activeCode = room?.roomCode;
+        const activeCode = roomRef.current?.roomCode || PlayerStorage.getActiveSession()?.roomCode;
         if (activeCode) {
           try {
             const fresh = await ApiClient.getRoom(activeCode);
             if (fresh?.room) setRoom(fresh.room);
             if (fresh?.players) setPlayers(fresh.players);
+            if (fresh?.scenario) setSelectedScenario(fresh.scenario);
+            if (fresh?.resolution) setResolution(fresh.resolution);
+            if (fresh?.consequence) setConsequenceData(fresh.consequence);
           } catch {
             // Ignore background error
           }
@@ -157,10 +238,11 @@ export default function ChaosMainApp() {
     window.addEventListener("focus", handleVisibilitySync);
 
     return () => {
+      window.removeEventListener("popstate", handlePopState);
       document.removeEventListener("visibilitychange", handleVisibilitySync);
       window.removeEventListener("focus", handleVisibilitySync);
     };
-  }, [room?.roomCode]);
+  }, []);
 
   // Synchronize Ad-Free status with AdMob native engine
   useEffect(() => {
@@ -188,9 +270,30 @@ export default function ChaosMainApp() {
     sse.addEventListener("PLAYERS_UPDATED", (e) => {
       const data = JSON.parse(e.data);
       setPlayers(data.players);
-      if (currentPlayer) {
-        const me = data.players.find((p: PlayerSession) => p.id === currentPlayer.id);
-        if (me) setCurrentPlayer(me);
+      const myId = currentPlayerRef.current?.id;
+      if (myId) {
+        const me = data.players.find((p: PlayerSession) => p.id === myId);
+        if (me) {
+          if (roomRef.current?.hostId === me.id || currentPlayerRef.current?.isHost) {
+            me.isHost = true;
+          }
+          setCurrentPlayer(me);
+        }
+      }
+    });
+
+    sse.addEventListener("VOTE_LOCKED_STATUS", (e) => {
+      const data = JSON.parse(e.data);
+      if (data.lockedPlayerIds) {
+        const lockedSet = new Set(data.lockedPlayerIds);
+        setPlayers((prev) =>
+          prev.map((p) => {
+            if (lockedSet.has(p.id)) {
+              return { ...p, hasLockedInitialVote: true, hasLockedFinalVote: true };
+            }
+            return p;
+          })
+        );
       }
     });
 
@@ -216,7 +319,8 @@ export default function ChaosMainApp() {
 
     sse.addEventListener("SECRET_MISSION_ASSIGNED", (e) => {
       const data = JSON.parse(e.data);
-      if (currentPlayer && data.playerId === currentPlayer.id) {
+      const myId = currentPlayerRef.current?.id;
+      if (myId && data.playerId === myId) {
         setCurrentPlayer((prev) => (prev ? { ...prev, secretMission: data.mission } : prev));
       }
     });
@@ -310,9 +414,7 @@ export default function ChaosMainApp() {
       setChaosReport(data.report);
       setView("chaos_report");
       AnalyticsService.trackEvent("game_completed", {
-        roomCode: room?.roomCode,
-        scenarioId: room?.scenarioId,
-        totalPlayers: players.length,
+        roomCode: data.report?.roomId,
       });
     });
 
@@ -320,7 +422,7 @@ export default function ChaosMainApp() {
       sse.close();
       eventSourceRef.current = null;
     };
-  }, [room?.roomCode, currentPlayer?.id, room?.scenarioId, players.length]);
+  }, [room?.roomCode]);
 
   // Halftime Intermission Trigger (Midway through 8-10 round game)
   useEffect(() => {
@@ -404,9 +506,13 @@ export default function ChaosMainApp() {
           return prev;
         });
 
-        if (currentPlayer) {
-          const freshMe = fresh.players.find((p) => p.id === currentPlayer.id);
+        const myId = currentPlayerRef.current?.id;
+        if (myId) {
+          const freshMe = fresh.players.find((p) => p.id === myId);
           if (freshMe) {
+            if (fresh.room.hostId === freshMe.id || currentPlayerRef.current?.isHost) {
+              freshMe.isHost = true;
+            }
             setCurrentPlayer((prev) => {
               if (!prev) return freshMe;
               if (
@@ -414,6 +520,7 @@ export default function ChaosMainApp() {
                 prev.hasLockedFinalVote !== freshMe.hasLockedFinalVote ||
                 prev.initialVoteOptionId !== freshMe.initialVoteOptionId ||
                 prev.finalVoteOptionId !== freshMe.finalVoteOptionId ||
+                prev.isHost !== freshMe.isHost ||
                 JSON.stringify(prev.secretMission) !== JSON.stringify(freshMe.secretMission)
               ) {
                 return freshMe;
@@ -425,7 +532,7 @@ export default function ChaosMainApp() {
       } catch {
         // Ignore background polling glitches
       }
-    }, 1500);
+    }, 3000);
 
     return () => {
       isMounted = false;
@@ -450,9 +557,11 @@ export default function ChaosMainApp() {
       }
 
       const profile = PlayerStorage.getProfile();
+      const hostPlayerId = PlayerStorage.getOrCreatePlayerId();
       const res = await ApiClient.createRoom({
         hostName: profile.name,
         hostAvatar: profile.avatar,
+        hostPlayerId,
         mode: selectedMode,
         scenarioId: selectedScenario.id,
         settings,
@@ -462,6 +571,18 @@ export default function ChaosMainApp() {
       setPlayers([res.host]);
       setCurrentPlayer(res.host);
       setHasSeenHalftime(false);
+
+      // Save active session for instant reconnection on refresh
+      PlayerStorage.saveActiveSession({
+        roomCode: res.room.roomCode,
+        roomId: res.room.id,
+        playerId: res.host.id,
+        playerName: res.host.name,
+        avatar: res.host.avatar,
+        isHost: true,
+      });
+      setActiveSession(PlayerStorage.getActiveSession());
+
       AnalyticsService.trackEvent("room_created", {
         roomCode: res.room.roomCode,
         scenarioId: selectedScenario.id,
@@ -473,12 +594,28 @@ export default function ChaosMainApp() {
     }
   };
 
-    // Real player joins via room code
+  // Real player joins via room code (or reconnects existing seat)
   const handleJoinRoom = async (code: string, name: string, avatar: AvatarKey) => {
-    const res = await ApiClient.joinRoom(code, name, avatar);
+    const persistentId = PlayerStorage.getOrCreatePlayerId();
+    const res = await ApiClient.joinRoom(code, name, avatar, persistentId);
+    if (res.room.hostId === res.player.id) {
+      res.player.isHost = true;
+    }
     setRoom(res.room);
     setCurrentPlayer(res.player);
     setHasSeenHalftime(false);
+
+    // Save active session for instant reconnection on refresh
+    PlayerStorage.saveActiveSession({
+      roomCode: res.room.roomCode,
+      roomId: res.room.id,
+      playerId: res.player.id,
+      playerName: res.player.name,
+      avatar: res.player.avatar,
+      isHost: res.player.isHost,
+    });
+    setActiveSession(PlayerStorage.getActiveSession());
+
     AnalyticsService.trackEvent("player_joined", {
       roomCode: code,
       playerName: name,
@@ -487,6 +624,9 @@ export default function ChaosMainApp() {
     setPlayers(updated.players);
     if (updated.scenario) {
       setSelectedScenario(updated.scenario);
+    }
+    if (updated.resolution) {
+      setResolution(updated.resolution);
     }
 
     // Report verified inbound referral attribution (Proof-of-Reach)
@@ -506,7 +646,52 @@ export default function ChaosMainApp() {
       // Ignore tracking errors
     }
 
-    setView("lobby");
+    // Restore correct view: If game has already progressed beyond lobby, resume directly into gameplay!
+    if (res.room.phase === "lobby") {
+      setView("lobby");
+    } else if (res.room.phase === "chaos_report") {
+      setView("chaos_report");
+    } else {
+      setView("gameplay");
+    }
+  };
+
+  // Manual Rejoin from Home screen CTA
+  const handleRejoinSession = async (session: import("@/services/storage/player-storage").ActiveSession) => {
+    try {
+      const fresh = await ApiClient.getRoom(session.roomCode);
+      const me = fresh.players.find(
+        (p) =>
+          p.id === session.playerId ||
+          p.name.trim().toLowerCase() === session.playerName.trim().toLowerCase()
+      );
+      if (me) {
+        if (session.isHost || fresh.room.hostId === me.id) {
+          me.isHost = true;
+        }
+        setRoom(fresh.room);
+        setPlayers(fresh.players);
+        setCurrentPlayer(me);
+        if (fresh.scenario) setSelectedScenario(fresh.scenario);
+        if (fresh.resolution) setResolution(fresh.resolution);
+        if (fresh.consequence) setConsequenceData(fresh.consequence);
+        if (fresh.room.phase === "lobby") {
+          setView("lobby");
+        } else if (fresh.room.phase === "chaos_report") {
+          setView("chaos_report");
+        } else {
+          setView("gameplay");
+        }
+        setJoinToast(`⚡ Reconnected to Room ${fresh.room.roomCode}!`);
+        setTimeout(() => setJoinToast(null), 3000);
+      } else {
+        await handleJoinRoom(session.roomCode, session.playerName, session.avatar);
+      }
+    } catch (err: unknown) {
+      PlayerStorage.clearActiveSession();
+      setActiveSession(null);
+      alert(err instanceof Error ? err.message : "Room is no longer active");
+    }
   };
 
   // Host adds an AI / Demo bot player to the lobby
@@ -550,22 +735,21 @@ export default function ChaosMainApp() {
   const handleStartGameFromLobby = async () => {
     if (!room || !currentPlayer) return;
     try {
-      await ApiClient.sendAction(room.roomCode, currentPlayer.id, "START_GAME");
-      const updated = await ApiClient.getRoom(room.roomCode);
-      setRoom(updated.room);
-      setPlayers(updated.players);
-      const me = updated.players.find((p) => p.id === currentPlayer.id);
-      if (me) setCurrentPlayer(me);
-      if (updated.scenario) {
-        setSelectedScenario(updated.scenario);
+      const res = await ApiClient.sendAction<{ room?: RoomSession }>(
+        room.roomCode,
+        currentPlayer.id,
+        "START_GAME"
+      );
+      if (res?.room) {
+        setRoom(res.room);
       }
+      setView("gameplay");
       AnalyticsService.trackEvent("game_started", {
         roomCode: room.roomCode,
         scenarioId: room.scenarioId,
-        totalPlayers: updated.players.length,
+        totalPlayers: players.length,
         totalRounds: room.totalRounds,
       });
-      setView("gameplay");
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Failed to start");
     }
@@ -574,6 +758,10 @@ export default function ChaosMainApp() {
   // Player locks initial vote
   const handleLockInitialVote = async (optionId: string) => {
     if (!room || !currentPlayer) return;
+    // Optimistic local state update for instant UI feedback
+    setCurrentPlayer((prev) =>
+      prev ? { ...prev, initialVoteOptionId: optionId, hasLockedInitialVote: true } : prev
+    );
     try {
       await ApiClient.sendAction(room.roomCode, currentPlayer.id, "LOCK_INITIAL_VOTE", {
         optionId,
@@ -585,34 +773,39 @@ export default function ChaosMainApp() {
         roomCode: room.roomCode,
       });
 
-      const updated = await ApiClient.getRoom(room.roomCode);
-      setRoom(updated.room);
-      setPlayers(updated.players);
-      const me = updated.players.find((p) => p.id === currentPlayer.id);
-      if (me) setCurrentPlayer(me);
+      // Auto-simulate only AI bot players if any exist
+      const botPlayers = players.filter(
+        (p) =>
+          (p.id.startsWith("bot_") ||
+            p.name === "Riya" ||
+            p.name === "Karan" ||
+            p.name === "Simran" ||
+            p.name === "Vishal" ||
+            p.name === "Neha" ||
+            p.name === "Zack" ||
+            p.name === "Maya" ||
+            p.name === "Leo") &&
+          p.id !== currentPlayer.id &&
+          !p.hasLockedInitialVote
+      );
 
-      // If playing with bots/squad, simulate remaining bots locking votes with natural pacing
-      setTimeout(async () => {
-        try {
-          const fresh = await ApiClient.getRoom(room.roomCode);
-          for (const p of fresh.players) {
-            if (p.id !== currentPlayer.id && !p.hasLockedInitialVote) {
-              const options = ["A", "B", "C", "D"];
-              const opt = options[Math.floor(Math.random() * options.length)];
-              await ApiClient.sendAction(room.roomCode, p.id, "LOCK_INITIAL_VOTE", {
-                optionId: opt,
-              });
-            }
+      if (botPlayers.length > 0) {
+        setTimeout(async () => {
+          try {
+            await Promise.all(
+              botPlayers.map((bot) => {
+                const options = ["A", "B", "C", "D"];
+                const opt = options[Math.floor(Math.random() * options.length)];
+                return ApiClient.sendAction(room.roomCode, bot.id, "LOCK_INITIAL_VOTE", {
+                  optionId: opt,
+                }).catch((e) => console.error("Error locking bot vote:", e));
+              })
+            );
+          } catch (e) {
+            console.error("Error locking bot votes batch:", e);
           }
-          const allLocked = await ApiClient.getRoom(room.roomCode);
-          setRoom(allLocked.room);
-          setPlayers(allLocked.players);
-          const freshMe = allLocked.players.find((p) => p.id === currentPlayer.id);
-          if (freshMe) setCurrentPlayer(freshMe);
-        } catch (e) {
-          console.error("Error locking bot votes:", e);
-        }
-      }, 1200);
+        }, 300);
+      }
     } catch (err: unknown) {
       console.error(err);
     }
@@ -623,8 +816,6 @@ export default function ChaosMainApp() {
     if (!room || !currentPlayer) return;
     try {
       await ApiClient.sendAction(room.roomCode, currentPlayer.id, "SKIP_DISCUSSION");
-      const updated = await ApiClient.getRoom(room.roomCode);
-      setRoom(updated.room);
     } catch (err: unknown) {
       console.error(err);
     }
@@ -633,6 +824,10 @@ export default function ChaosMainApp() {
   // Player locks final vote
   const handleLockFinalVote = async (optionId: string) => {
     if (!room || !currentPlayer) return;
+    // Optimistic local state update for instant UI feedback
+    setCurrentPlayer((prev) =>
+      prev ? { ...prev, finalVoteOptionId: optionId, hasLockedFinalVote: true } : prev
+    );
     try {
       await ApiClient.sendAction(room.roomCode, currentPlayer.id, "LOCK_FINAL_VOTE", {
         optionId,
@@ -644,39 +839,41 @@ export default function ChaosMainApp() {
         roomCode: room.roomCode,
       });
 
-      const updated = await ApiClient.getRoom(room.roomCode);
-      setRoom(updated.room);
-      setPlayers(updated.players);
-      const me = updated.players.find((p) => p.id === currentPlayer.id);
-      if (me) setCurrentPlayer(me);
-
       // Simulate bot final votes if any
-      setTimeout(async () => {
-        try {
-          const fresh = await ApiClient.getRoom(room.roomCode);
-          if (fresh.room.phase !== "final_vote") return;
-          for (const p of fresh.players) {
-            if (p.id !== currentPlayer.id && !p.hasLockedFinalVote) {
-              const flipOpt =
-                p.name === "Riya" || p.name === "Karan"
-                  ? "B"
-                  : p.initialVoteOptionId || "B";
-              await ApiClient.sendAction(room.roomCode, p.id, "LOCK_FINAL_VOTE", {
-                optionId: flipOpt,
-              });
-            }
+      const botPlayers = players.filter(
+        (p) =>
+          (p.id.startsWith("bot_") ||
+            p.name === "Riya" ||
+            p.name === "Karan" ||
+            p.name === "Simran" ||
+            p.name === "Vishal" ||
+            p.name === "Neha" ||
+            p.name === "Zack" ||
+            p.name === "Maya" ||
+            p.name === "Leo") &&
+          p.id !== currentPlayer.id &&
+          !p.hasLockedFinalVote
+      );
+
+      if (botPlayers.length > 0) {
+        setTimeout(async () => {
+          try {
+            await Promise.all(
+              botPlayers.map((bot) => {
+                const flipOpt =
+                  bot.name === "Riya" || bot.name === "Karan"
+                    ? "B"
+                    : bot.initialVoteOptionId || "B";
+                return ApiClient.sendAction(room.roomCode, bot.id, "LOCK_FINAL_VOTE", {
+                  optionId: flipOpt,
+                }).catch((e) => console.error("Error locking bot final vote:", e));
+              })
+            );
+          } catch (e) {
+            console.error("Error locking bot final votes batch:", e);
           }
-          const allLocked = await ApiClient.getRoom(room.roomCode);
-          setRoom(allLocked.room);
-          setPlayers(allLocked.players);
-          if (allLocked.resolution) setResolution(allLocked.resolution);
-          if (allLocked.consequence) setConsequenceData(allLocked.consequence);
-          const freshMe = allLocked.players.find((p) => p.id === currentPlayer.id);
-          if (freshMe) setCurrentPlayer(freshMe);
-        } catch (e) {
-          console.error("Error locking bot final votes:", e);
-        }
-      }, 1200);
+        }, 300);
+      }
     } catch (err: unknown) {
       console.error(err);
     }
@@ -813,7 +1010,15 @@ export default function ChaosMainApp() {
     }
   };
 
+  const handleDismissActiveSession = () => {
+    PlayerStorage.clearActiveSession();
+    setActiveSession(null);
+  };
+
   const handleLeaveRoom = () => {
+    // Keep active session stored so the player can rejoin anytime from Home screen CTA
+    const session = PlayerStorage.getActiveSession();
+    setActiveSession(session);
     setRoom(null);
     setView("home");
   };
@@ -822,13 +1027,13 @@ export default function ChaosMainApp() {
     selectedScenario.rounds[(room?.currentRoundIndex || 1) - 1] || selectedScenario.rounds[0];
 
   return (
-    <div className="relative min-h-screen w-full bg-[#06010D] flex items-center justify-center overflow-x-hidden">
+    <div className="relative h-[100dvh] max-h-[100dvh] w-full bg-[#06010D] flex items-center justify-center overflow-hidden">
       {/* Studio Ambient Backlights for Desktop */}
       <div className="fixed -top-40 -left-40 w-96 h-96 bg-purple-600/15 rounded-full blur-[140px] pointer-events-none" />
       <div className="fixed -bottom-40 -right-40 w-96 h-96 bg-pink-600/15 rounded-full blur-[140px] pointer-events-none" />
 
       {/* Main Game Screen Canvas */}
-      <div className="relative min-h-screen w-full max-w-[420px] bg-[#080210] shadow-[0_0_60px_rgba(0,0,0,0.9),0_0_20px_rgba(168,85,247,0.2)] flex flex-col justify-between overflow-x-hidden">
+      <div className="relative h-[100dvh] max-h-[100dvh] w-full max-w-[440px] bg-[#080210] shadow-[0_0_60px_rgba(0,0,0,0.9),0_0_20px_rgba(168,85,247,0.2)] flex flex-col justify-between overflow-hidden">
         {/* Global Floating Reactions & Buzzer Alerts Overlay */}
         <LiveReactionOverlay
           floatingEmojis={floatingEmojis}
@@ -850,6 +1055,9 @@ export default function ChaosMainApp() {
               setSelectedScenario(ScenarioRegistry.getDefaultCouplesScenario());
               setView("scenario_select");
             }}
+            activeSession={activeSession}
+            onRejoinSession={handleRejoinSession}
+            onDismissSession={handleDismissActiveSession}
           />
         )}
 
@@ -902,6 +1110,7 @@ export default function ChaosMainApp() {
             room={room}
             players={players}
             currentPlayerId={currentPlayer.id}
+            currentPlayer={currentPlayer}
             onStartGame={handleStartGameFromLobby}
             onLeaveRoom={handleLeaveRoom}
             onEditSettings={() => setView("game_settings")}

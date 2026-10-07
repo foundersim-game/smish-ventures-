@@ -74,10 +74,7 @@ export const BlameScreen: React.FC<BlameScreenProps> = ({
   };
 
   return (
-    <div
-      className="relative min-h-[100dvh] w-full flex flex-col justify-between px-4 pt-5 pb-12 bg-[#080210] select-none overflow-y-auto overflow-x-hidden"
-      style={{ paddingBottom: "max(3rem, env(safe-area-inset-bottom, 28px))" }}
-    >
+    <div className="relative h-full max-h-[100dvh] w-full flex flex-col justify-between px-3.5 py-1.5 sm:py-2 bg-[#080210] select-none overflow-hidden">
       {/* Top Header */}
       <TopHeader
         currentRound={room.currentRoundIndex}
@@ -85,30 +82,30 @@ export const BlameScreen: React.FC<BlameScreenProps> = ({
         onLeave={onLeave}
       />
 
-      <div className="my-auto w-full max-w-sm mx-auto flex flex-col items-center text-center py-2">
+      <div className="flex-1 min-h-0 my-auto w-full max-w-sm mx-auto flex flex-col items-center text-center py-0.5 overflow-y-auto no-scrollbar">
         {!showReceipts ? (
           /* ============================================================== */
           /* STAGE 1: ACCUSATION VOTE ("WHO CAUSED THIS?") */
           /* ============================================================== */
           <>
-            <div className="px-4 py-1.5 rounded-full bg-red-500/20 border border-red-500/50 text-red-300 font-display font-black text-xs uppercase tracking-widest mb-2 flex items-center gap-1.5">
-              <AlertCircle className="w-3.5 h-3.5 text-red-400" />
+            <div className="px-3 py-1 rounded-full bg-red-500/20 border border-red-500/50 text-red-300 font-display font-black text-[10px] uppercase tracking-widest mb-1 flex items-center gap-1.5">
+              <AlertCircle className="w-3 h-3 text-red-400" />
               <span>TIME FOR RECKONING</span>
             </div>
 
-            <h1 className="font-display font-black text-3xl md:text-4xl uppercase tracking-tight bg-gradient-to-r from-[#FF0038] via-[#FF3B8A] to-[#FFD23F] bg-clip-text text-transparent">
+            <h1 className="font-display font-black text-2xl sm:text-3xl uppercase tracking-tight bg-gradient-to-r from-[#FF0038] via-[#FF3B8A] to-[#FFD23F] bg-clip-text text-transparent">
               WHO CAUSED THIS?
             </h1>
 
-            <p className="text-gray-300 text-xs mt-1.5 mb-5 max-w-xs leading-relaxed">
+            <p className="text-gray-300 text-[11px] mt-1 mb-3 max-w-xs leading-tight">
               Whose fault was this outcome? Point the finger at the person most responsible.
             </p>
 
             {/* Players Grid for Blame (Symmetric 2x2 for <=4 players, 3x2 for 5-6) */}
             <div
               className={`grid ${
-                players.length <= 4 ? "grid-cols-2 max-w-[280px]" : "grid-cols-3"
-              } gap-2.5 w-full mb-5 mx-auto`}
+                players.length <= 4 ? "grid-cols-2 max-w-[260px]" : "grid-cols-3"
+              } gap-2 w-full mb-3 mx-auto`}
             >
               {players.map((p) => {
                 const isSelected = selectedBlamedId === p.id;
@@ -342,13 +339,13 @@ export const BlameScreen: React.FC<BlameScreenProps> = ({
             )}
 
             {/* Next Round CTA */}
-            <div className="w-full mt-4 mb-8">
+            <div className="w-full mt-2 mb-2">
               <button
                 onClick={onNextRound}
-                className="w-full py-4 rounded-3xl bg-gradient-to-r from-[#C026D3] via-[#A21CAF] to-[#701A75] text-white font-display font-black text-base uppercase tracking-wider shadow-[0_8px_30px_rgba(192,38,211,0.6)] border-2 border-pink-400/50 active:scale-98 cursor-pointer flex items-center justify-center gap-1.5"
+                className="w-full py-3 sm:py-3.5 rounded-2xl bg-gradient-to-r from-[#C026D3] via-[#A21CAF] to-[#701A75] text-white font-display font-black text-sm uppercase tracking-wider shadow-[0_6px_24px_rgba(192,38,211,0.6)] border-2 border-pink-400/50 active:scale-98 cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <span>NEXT ROUND</span>
-                <ChevronRight className="w-5 h-5 text-white" />
+                <ChevronRight className="w-4 h-4 text-white" />
               </button>
             </div>
           </>

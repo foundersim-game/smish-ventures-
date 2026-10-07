@@ -6,11 +6,12 @@ import { MonetizationService } from "../../../backend/services/monetization.serv
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { hostName, hostAvatar, mode, scenarioId, settings, isPaidSession } = body;
+    const { hostName, hostAvatar, hostPlayerId, mode, scenarioId, settings, isPaidSession } = body;
 
     const result = await RoomService.createRoom({
       hostName,
       hostAvatar,
+      hostPlayerId,
       mode,
       scenarioId,
       settings,

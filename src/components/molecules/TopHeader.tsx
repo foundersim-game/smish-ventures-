@@ -35,12 +35,12 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   };
 
   return (
-    <header className="relative w-full flex items-center justify-between px-4 py-3 select-none z-30">
+    <header className="relative w-full max-w-md mx-auto flex items-center justify-between px-4 py-3 select-none z-30">
       {/* Leave Button */}
       {onLeave ? (
         <button
           onClick={handleLeaveClick}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-chaos-card/80 border border-purple-500/30 text-white text-xs font-bold active:scale-95 transition-transform"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-chaos-card/80 border border-purple-500/30 text-white text-xs font-bold active:scale-95 transition-transform z-10"
         >
           <ChevronLeft className="w-4 h-4 text-purple-300" />
           <span>Leave</span>
@@ -49,17 +49,17 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         <div className="w-16" />
       )}
 
-      {/* Brand Header with Transparent 3D Logo */}
-      <div className="flex items-center justify-center">
+      {/* Brand Header with Transparent 3D Logo - Perfectly Centered */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
         <img
           src="/logo-transparent.png"
           alt="CHAOS"
-          className="h-9 w-auto object-contain filter drop-shadow-[0_2px_10px_rgba(255,0,56,0.6)] active:scale-95 transition-transform"
+          className="h-8 w-auto object-contain filter drop-shadow-[0_2px_10px_rgba(255,0,56,0.6)]"
         />
       </div>
 
       {/* Right controls: Music Toggle & Round Indicator Pill */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 z-10">
         <button
           onClick={handleMusicToggle}
           title={isMusicOn ? "Mute Background Music" : "Unmute Background Music"}
@@ -73,8 +73,8 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         </button>
 
         {showRoundPill ? (
-          <div className="px-3 py-1.5 rounded-full bg-[#1F1238] border border-purple-500/40 text-xs font-extrabold shadow-inner flex items-center gap-1">
-            <span className="text-gray-300 font-sans">Round</span>
+          <div className="px-2.5 py-1 rounded-full bg-[#1F1238] border border-purple-500/40 text-xs font-extrabold shadow-inner flex items-center gap-1">
+            <span className="text-gray-300 font-sans text-[11px]">R</span>
             <span className="text-yellow-400 font-display text-sm">{currentRound}</span>
             <span className="text-gray-500">/</span>
             <span className="text-gray-300 font-display text-sm">{totalRounds}</span>

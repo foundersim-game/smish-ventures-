@@ -41,7 +41,7 @@ export const OptionCard: React.FC<OptionCardProps> = ({
     <div
       onClick={handleClick}
       className={`
-        relative w-full p-4 rounded-2xl flex items-center gap-3.5 select-none transition-all duration-150 cursor-pointer border
+        relative w-full p-2.5 sm:p-3 rounded-xl sm:rounded-2xl flex items-center gap-2.5 sm:gap-3 select-none transition-all duration-150 cursor-pointer border
         ${
           isSelected
             ? "border-2 border-[#00D2FF] bg-[#161642] shadow-[0_0_22px_rgba(0,210,255,0.45)] scale-[1.01]"
@@ -53,7 +53,7 @@ export const OptionCard: React.FC<OptionCardProps> = ({
       {/* Option Letter Badge */}
       <div
         className={`
-          w-10 h-10 rounded-xl flex items-center justify-center font-display font-black text-xl shadow-md flex-shrink-0
+          w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center font-display font-black text-base sm:text-lg shadow-md flex-shrink-0
           ${badgeGradients[badgeColor] || badgeGradients.blue}
         `}
       >
@@ -61,12 +61,12 @@ export const OptionCard: React.FC<OptionCardProps> = ({
       </div>
 
       {/* Label and Subtitle */}
-      <div className="flex-1 min-w-0 pr-2">
-        <h4 className="text-white font-sans font-bold text-sm md:text-base tracking-tight leading-snug break-words">
+      <div className="flex-1 min-w-0 pr-1 sm:pr-2">
+        <h4 className="text-white font-sans font-bold text-xs sm:text-sm tracking-tight leading-snug break-words">
           {label}
         </h4>
         {subtitle && (
-          <p className="text-gray-300 text-xs mt-1 leading-snug break-words">
+          <p className="text-gray-300 text-[10px] sm:text-xs mt-0.5 leading-snug break-words">
             {subtitle}
           </p>
         )}

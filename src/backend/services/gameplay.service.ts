@@ -119,10 +119,23 @@ export class GameplayService {
   public static async startGame(roomCode: string, hostPlayerId: string): Promise<RoomSession> {
     const room = await this.repo.findByCode(roomCode);
     if (!room) throw new Error("Room not found.");
-    if (room.hostId !== hostPlayerId) throw new Error("Only the host can start the game.");
 
     const players = await this.repo.getPlayers(room.id);
-    const minPlayers = room.mode === "couples" ? 2 : room.settings.minPlayers;
+    const callingPlayer = players.find((p) => p.id === hostPlayerId);
+    const isHost =
+      room.hostId === hostPlayerId ||
+      callingPlayer?.isHost === true ||
+      (players.length > 0 && players[0].id === hostPlayerId) ||
+      (players.length > 0 && callingPlayer && players[0].name.trim().toLowerCase() === callingPlayer.name.trim().toLowerCase());
+
+    if (!isHost) throw new Error("Only the host can start the game.");
+
+    // Sync room.hostId if needed
+    if (room.hostId !== hostPlayerId) {
+      room.hostId = hostPlayerId;
+    }
+
+    const minPlayers = room.mode === "couples" ? 2 : Math.min(room.settings.minPlayers || 2, 2);
     if (players.length < minPlayers) {
       throw new Error(`At least ${minPlayers} players are required to start.`);
     }
@@ -145,24 +158,28 @@ export class GameplayService {
       this.currentModifiers.delete(room.id);
     }
 
-    // Reset player vote states for Round 1 & assign secret missions
-    for (const p of players) {
-      const mission = missions.get(p.id) || null;
-      await this.repo.updatePlayer(room.id, p.id, {
-        initialVoteOptionId: null,
-        finalVoteOptionId: null,
-        hasLockedInitialVote: false,
-        hasLockedFinalVote: false,
-        hasSubmittedInfluence: false,
-        hasSubmittedBlame: false,
-        secretMission: mission,
-      });
+    // Reset player vote states for Round 1 & assign secret missions in parallel
+    const updatedPlayers = await Promise.all(
+      players.map(async (p) => {
+        const mission = missions.get(p.id) || null;
+        const updated = await this.repo.updatePlayer(room.id, p.id, {
+          initialVoteOptionId: null,
+          finalVoteOptionId: null,
+          hasLockedInitialVote: false,
+          hasLockedFinalVote: false,
+          hasSubmittedInfluence: false,
+          hasSubmittedBlame: false,
+          secretMission: mission,
+        });
 
-      if (mission) {
-        this.bus.publish(roomCode, "SECRET_MISSION_ASSIGNED", { playerId: p.id, mission });
-      }
-    }
+        if (mission) {
+          this.bus.publish(roomCode, "SECRET_MISSION_ASSIGNED", { playerId: p.id, mission });
+        }
+        return updated || p;
+      })
+    );
 
+    this.bus.publish(roomCode, "PLAYERS_UPDATED", { players: updatedPlayers });
     this.bus.publish(roomCode, "PHASE_CHANGED", {
       previousPhase: "lobby",
       newPhase: "initial_vote",
@@ -197,6 +214,7 @@ export class GameplayService {
       totalPlayers,
       lockedPlayerIds: players.filter((p) => p.hasLockedInitialVote).map((p) => p.id),
     });
+    this.bus.publish(roomCode, "PLAYERS_UPDATED", { players });
 
     // Check if everyone has locked -> automatically transition to Phones Down Discussion
     if (lockedCount >= totalPlayers && totalPlayers > 0) {
@@ -288,6 +306,7 @@ export class GameplayService {
       totalPlayers,
       lockedPlayerIds: players.filter((p) => p.hasLockedFinalVote).map((p) => p.id),
     });
+    this.bus.publish(roomCode, "PLAYERS_UPDATED", { players });
 
     // If all final votes locked -> begin the 6-beat staged mystery box reveal!
     if (lockedCount >= totalPlayers && totalPlayers > 0) {

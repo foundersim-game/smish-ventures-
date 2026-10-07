@@ -27,6 +27,7 @@ export class RoomService {
   public static async createRoom(params: {
     hostName: string;
     hostAvatar: AvatarKey;
+    hostPlayerId?: string;
     mode?: GameMode;
     scenarioId?: string;
     settings?: Partial<GameSettings>;
@@ -55,7 +56,7 @@ export class RoomService {
       attempt++;
     }
 
-    const hostId = crypto.randomUUID();
+    const hostId = params.hostPlayerId || crypto.randomUUID();
     const now = Date.now();
 
     const room: RoomSession = {
@@ -115,6 +116,7 @@ export class RoomService {
     roomCode: string;
     playerName: string;
     avatar: AvatarKey;
+    playerId?: string;
   }): Promise<{ room: RoomSession; player: PlayerSession }> {
     const code = params.roomCode.toUpperCase().trim();
     const room = await this.repo.findByCode(code);
@@ -123,24 +125,44 @@ export class RoomService {
       throw new Error(`Room with code '${code}' not found.`);
     }
 
+    const existingPlayers = await this.repo.getPlayers(room.id);
+    const requestedName = params.playerName.trim();
+    const nameLower = requestedName.toLowerCase();
+
+    // 1. RECONNECTION CHECK:
+    // If a player with the same playerId OR the same name already exists in this room,
+    // reconnect them to their existing seat instead of duplicating!
+    const existingPlayer = existingPlayers.find(
+      (p) =>
+        (params.playerId && p.id === params.playerId) ||
+        (requestedName && p.name.trim().toLowerCase() === nameLower)
+    );
+
+    if (existingPlayer) {
+      existingPlayer.connected = true;
+      existingPlayer.lastSeenAt = Date.now();
+      if (params.avatar) {
+        existingPlayer.avatar = params.avatar;
+      }
+      await this.repo.savePlayer(existingPlayer, room.roomCode);
+      const updatedPlayers = await this.repo.getPlayers(room.id);
+      this.bus.publish(room.roomCode, "PLAYERS_UPDATED", { players: updatedPlayers });
+      return { room, player: existingPlayer };
+    }
+
+    // 2. NEW PLAYER CHECKS:
     if (room.phase !== "lobby") {
       throw new Error("Game has already started. Cannot join in-progress session.");
     }
 
-    const existingPlayers = await this.repo.getPlayers(room.id);
     const maxPlayers = room.mode === "couples" ? 2 : room.settings.maxPlayers;
-
     if (existingPlayers.length >= maxPlayers) {
       throw new Error(`Room is full (${existingPlayers.length}/${maxPlayers} players).`);
     }
 
-    const playerId = crypto.randomUUID();
+    const playerId = params.playerId || crypto.randomUUID();
     const now = Date.now();
-
-    const requestedName = params.playerName.trim() || `Player ${existingPlayers.length + 1}`;
-    const nameLower = requestedName.toLowerCase();
-    const isDuplicate = existingPlayers.some((p) => p.name.trim().toLowerCase() === nameLower);
-    const finalPlayerName = isDuplicate ? `${requestedName} (${existingPlayers.length + 1})` : requestedName;
+    const finalPlayerName = requestedName || `Player ${existingPlayers.length + 1}`;
 
     const player: PlayerSession = {
       id: playerId,

@@ -41,7 +41,7 @@ export const PhaseStepper: React.FC<PhaseStepperProps> = ({ currentPhase }) => {
   ];
 
   return (
-    <div className="w-full px-6 py-2 select-none">
+    <div className="w-full max-w-sm mx-auto px-4 py-2 select-none">
       <div className="relative flex items-center justify-between">
         {/* Connecting Line */}
         <div className="absolute top-4 left-6 right-6 h-[1.5px] border-t-2 border-dotted border-purple-800/80 -z-0" />

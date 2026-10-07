@@ -60,27 +60,28 @@ export const ChaosReportScreen: React.FC<ChaosReportScreenProps> = ({
   };
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col justify-between px-5 pt-8 pb-6 bg-[#090310] select-none">
+    <div className="relative h-full max-h-[100dvh] w-full flex flex-col justify-between px-3.5 py-1.5 sm:py-2 bg-[#090310] select-none overflow-hidden">
       {/* Toast Notification */}
       {copiedToast && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold shadow-xl border border-pink-400/50 max-w-xs text-center animate-fade-in">
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold shadow-xl border border-pink-400/50 max-w-xs text-center animate-fade-in">
           {copiedToast}
         </div>
       )}
 
       {/* Top Header */}
-      <div className="flex flex-col items-center text-center">
+      <div className="flex flex-col items-center text-center flex-shrink-0 pt-0.5">
         <ChaosLogo size="sm" />
-        <span className="text-xs font-display font-extrabold uppercase tracking-widest text-amber-300 mt-1">
+        <span className="text-[10px] font-display font-extrabold uppercase tracking-widest text-amber-300 mt-0.5">
           GAME OVER
         </span>
-        <h1 className="font-display font-black text-3xl text-white tracking-tight">
+        <h1 className="font-display font-black text-2xl sm:text-3xl text-white tracking-tight leading-tight">
           YOUR <span className="text-pink-400">CHAOS REPORT</span>
         </h1>
       </div>
 
-      {/* Main Report Card */}
-      <div className="p-5 rounded-3xl bg-[#1D1036] border-2 border-purple-500/50 shadow-2xl my-auto max-w-sm mx-auto w-full">
+      {/* Main Report Card Container */}
+      <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar my-1 w-full max-w-sm mx-auto">
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-[#1D1036] border-2 border-purple-500/50 shadow-xl w-full">
         {/* Session Stats Grid */}
         <div className="grid grid-cols-3 gap-2 pb-4 border-b border-purple-800/60 text-center">
           <div>
@@ -173,6 +174,7 @@ export const ChaosReportScreen: React.FC<ChaosReportScreenProps> = ({
             <span>CREATE A GAME (FREE)</span>
           </button>
         </div>
+      </div>
       </div>
 
       {/* Action Buttons */}

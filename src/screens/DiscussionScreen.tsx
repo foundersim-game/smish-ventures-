@@ -48,7 +48,7 @@ export const DiscussionScreen: React.FC<DiscussionScreenProps> = ({
   }, []);
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col justify-between px-4 pt-5 pb-6 bg-[#080210] select-none overflow-y-auto overflow-x-hidden">
+    <div className="relative h-full max-h-[100dvh] w-full flex flex-col justify-between px-3.5 py-1.5 sm:py-2.5 bg-[#080210] select-none overflow-hidden">
       {/* Top Header */}
       <TopHeader
         currentRound={room.currentRoundIndex}
@@ -61,36 +61,36 @@ export const DiscussionScreen: React.FC<DiscussionScreenProps> = ({
 
       {/* Active Chaos Modifier Banner (In-Flow, Never Overlapping Navigation Header) */}
       {activeModifier && (
-        <div className="w-full max-w-sm mx-auto my-1.5 p-3 rounded-2xl bg-gradient-to-r from-purple-950/90 via-black/90 to-amber-950/90 border border-yellow-400/60 shadow-[0_0_18px_rgba(250,204,21,0.25)] text-white backdrop-blur-sm animate-fade-in text-left">
+        <div className="w-full max-w-sm mx-auto my-1 p-2.5 rounded-2xl bg-gradient-to-r from-purple-950/90 via-black/90 to-amber-950/90 border border-yellow-400/60 shadow-[0_0_14px_rgba(250,204,21,0.25)] text-white backdrop-blur-sm animate-fade-in text-left">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-xl">{activeModifier.icon}</span>
+              <span className="text-lg">{activeModifier.icon}</span>
               <div>
-                <span className="text-[9px] font-black uppercase text-yellow-300 tracking-wider block">
+                <span className="text-[8.5px] font-black uppercase text-yellow-300 tracking-wider block">
                   CHAOS MODIFIER: {activeModifier.tagline}
                 </span>
-                <span className="font-display font-black text-sm text-white">
+                <span className="font-display font-black text-xs text-white">
                   {activeModifier.title}
                 </span>
               </div>
             </div>
-            <span className="text-[9px] font-extrabold text-yellow-400 px-2 py-0.5 rounded-full bg-yellow-400/20 border border-yellow-400/40">
+            <span className="text-[8.5px] font-extrabold text-yellow-400 px-2 py-0.5 rounded-full bg-yellow-400/20 border border-yellow-400/40">
               RULE IN PLAY
             </span>
           </div>
-          <p className="text-gray-200 text-xs mt-1.5 pl-7 font-medium leading-snug">
+          <p className="text-gray-200 text-[11px] mt-1 pl-6 font-medium leading-tight">
             👉 {activeModifier.description}
           </p>
         </div>
       )}
 
       {/* Center Theatrical Section */}
-      <div className="flex flex-col items-center text-center my-auto w-full max-w-sm mx-auto py-1">
+      <div className="flex flex-col items-center text-center my-auto w-full max-w-sm mx-auto py-0.5">
         {/* Pink Gradient Megaphone with Sound Waves (Screen 11) */}
-        <div className="relative mb-2 flex items-center justify-center">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#9333EA] to-[#EC4899] p-2 flex items-center justify-center shadow-[0_0_24px_rgba(236,72,153,0.6)]">
+        <div className="relative mb-1 flex items-center justify-center">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#9333EA] to-[#EC4899] p-1.5 flex items-center justify-center shadow-[0_0_18px_rgba(236,72,153,0.6)]">
             <svg
-              className="w-7 h-7 transform -rotate-12 filter drop-shadow-[0_0_8px_rgba(255,255,255,0.6)] text-white"
+              className="w-5 h-5 transform -rotate-12 filter drop-shadow-[0_0_6px_rgba(255,255,255,0.6)] text-white"
               viewBox="0 0 24 24"
               fill="currentColor"
             >
@@ -100,29 +100,30 @@ export const DiscussionScreen: React.FC<DiscussionScreenProps> = ({
         </div>
 
         {/* Massive Headline (Screen 11) */}
-        <h1 className="font-display font-black text-3xl md:text-4xl text-white tracking-tight leading-none">
+        <h1 className="font-display font-black text-2xl sm:text-3xl text-white tracking-tight leading-none">
           PHONES DOWN.
         </h1>
-        <h1 className="font-display font-black text-3xl md:text-4xl tracking-tight leading-none bg-gradient-to-r from-[#FF3B8A] via-[#FF7A70] to-[#FFD23F] bg-clip-text text-transparent mt-1">
+        <h1 className="font-display font-black text-2xl sm:text-3xl tracking-tight leading-none bg-gradient-to-r from-[#FF3B8A] via-[#FF7A70] to-[#FFD23F] bg-clip-text text-transparent mt-0.5">
           DISCUSS & CONVINCE.
         </h1>
 
-        <p className="text-gray-300 text-xs mt-2 font-medium leading-relaxed">
+        <p className="text-gray-300 text-[11px] mt-1 font-medium leading-tight">
           Argue your stance. Flip their minds.
         </p>
 
         {/* Giant Glowing Circular Countdown Ring (Screen 11) */}
-        <div className="my-3">
+        <div className="my-1.5 sm:my-2">
           <RadialCountdown
             startTimestamp={room.phaseStartTimestamp}
             totalDurationSeconds={room.phaseDurationSeconds || 60}
             onTimeUp={onTimeUp}
+            size={135}
           />
         </div>
 
         {/* Host Timer Controls (+30s / Skip) */}
         {isHost && (
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-1">
             {onExtendDiscussion && (
               <button
                 onClick={() => {
@@ -130,7 +131,7 @@ export const DiscussionScreen: React.FC<DiscussionScreenProps> = ({
                   haptics.trigger("medium");
                   onExtendDiscussion();
                 }}
-                className="px-2.5 py-1 rounded-xl bg-purple-900/60 border border-purple-500/40 text-purple-200 text-[11px] font-bold flex items-center gap-1 active:scale-95"
+                className="px-2.5 py-1 rounded-xl bg-purple-900/60 border border-purple-500/40 text-purple-200 text-[10px] font-bold flex items-center gap-1 active:scale-95"
               >
                 <Plus className="w-3 h-3" />
                 <span>+30s Debate</span>
@@ -142,7 +143,7 @@ export const DiscussionScreen: React.FC<DiscussionScreenProps> = ({
                   audio.play("click");
                   onSkipDiscussion();
                 }}
-                className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-gray-300 text-[11px] font-bold flex items-center gap-1 active:scale-95"
+                className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-gray-300 text-[10px] font-bold flex items-center gap-1 active:scale-95"
               >
                 <SkipForward className="w-3 h-3" />
                 <span>Vote Now</span>
@@ -153,13 +154,13 @@ export const DiscussionScreen: React.FC<DiscussionScreenProps> = ({
 
         {/* Secret Mission Peek Toggle during discussion */}
         {secretMission && (
-          <div className="w-full my-1">
+          <div className="w-full my-0.5">
             {showMission ? (
               <div className="relative">
                 <SecretMissionCard mission={secretMission} />
                 <button
                   onClick={() => setShowMission(false)}
-                  className="mt-1 text-[11px] text-amber-300 font-bold underline"
+                  className="mt-0.5 text-[10px] text-amber-300 font-bold underline"
                 >
                   Hide Secret Card
                 </button>
@@ -170,9 +171,9 @@ export const DiscussionScreen: React.FC<DiscussionScreenProps> = ({
                   audio.play("click");
                   setShowMission(true);
                 }}
-                className="py-1.5 px-3 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-bold flex items-center gap-1.5 mx-auto active:scale-95 shadow"
+                className="py-1 px-2.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[11px] font-bold flex items-center gap-1 mx-auto active:scale-95 shadow"
               >
-                <Eye className="w-3.5 h-3.5" />
+                <Eye className="w-3 h-3" />
                 <span>Peek Secret Mission</span>
               </button>
             )}
@@ -181,30 +182,30 @@ export const DiscussionScreen: React.FC<DiscussionScreenProps> = ({
 
         {/* Interactive Reaction Buzzer Bar */}
         {onBuzzer && (
-          <div className="w-full mt-1">
+          <div className="w-full mt-0.5">
             <ReactionBuzzerBar onBuzzer={onBuzzer} />
           </div>
         )}
 
         {/* Interactive Floating Emoji Reaction Bar */}
         {onSendEmoji && (
-          <div className="w-full my-1">
+          <div className="w-full my-0.5">
             <TableEmojiBar onSendEmoji={onSendEmoji} />
           </div>
         )}
       </div>
 
       {/* Bottom Locked Answers Card */}
-      <div className="w-full max-w-sm mx-auto p-3.5 rounded-2xl bg-[#180A2E]/95 border-2 border-purple-500/40 shadow-[0_0_24px_rgba(168,85,247,0.3)] flex items-center gap-3 text-left mt-2 mb-3">
+      <div className="w-full max-w-sm mx-auto p-2.5 rounded-2xl bg-[#180A2E]/95 border-2 border-purple-500/40 shadow-[0_0_20px_rgba(168,85,247,0.3)] flex items-center gap-2.5 text-left mt-1 mb-1">
         <div className="text-purple-300 flex-shrink-0">
-          <Users className="w-5 h-5 stroke-[2.5]" />
+          <Users className="w-4 h-4 stroke-[2.5]" />
         </div>
-        <div className="w-[1px] h-7 bg-purple-700/50 flex-shrink-0" />
+        <div className="w-[1px] h-6 bg-purple-700/50 flex-shrink-0" />
         <div>
-          <h4 className="font-sans font-bold text-xs text-[#D8B4FE] tracking-tight">
+          <h4 className="font-sans font-bold text-[11px] text-[#D8B4FE] tracking-tight leading-tight">
             Everyone has locked their initial votes.
           </h4>
-          <p className="text-gray-300 text-[11px] mt-0.5 font-normal">
+          <p className="text-gray-300 text-[10px] mt-0.5 font-normal leading-tight">
             Listen closely to who tries to sway your vote.
           </p>
         </div>

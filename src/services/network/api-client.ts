@@ -15,6 +15,7 @@ export class ApiClient {
   public static async createRoom(params: {
     hostName: string;
     hostAvatar: AvatarKey;
+    hostPlayerId?: string;
     mode: GameMode;
     scenarioId?: string;
     settings?: Partial<GameSettings>;
@@ -46,24 +47,25 @@ export class ApiClient {
   public static async joinRoom(
     code: string,
     playerName: string,
-    avatar: AvatarKey
+    avatar: AvatarKey,
+    playerId?: string
   ): Promise<{ room: RoomSession; player: PlayerSession }> {
     const res = await fetch(`${getApiBaseUrl()}/api/rooms/${code.toUpperCase()}/join`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ playerName, avatar }),
+      body: JSON.stringify({ playerName, avatar, playerId }),
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.error);
     return data;
   }
 
-  public static async sendAction(
+  public static async sendAction<T = Record<string, any>>(
     code: string,
     playerId: string,
     action: string,
     payload: Record<string, unknown> = {}
-  ): Promise<Record<string, unknown>> {
+  ): Promise<T> {
     const res = await fetch(`${getApiBaseUrl()}/api/rooms/${code.toUpperCase()}/action`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -71,7 +73,7 @@ export class ApiClient {
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.error);
-    return data;
+    return data as T;
   }
 
   public static async addBotPlayer(

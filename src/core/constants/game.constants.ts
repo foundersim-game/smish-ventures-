@@ -1,7 +1,7 @@
 import { GameSettings } from "../types/room.types";
 
 export const DEFAULT_PARTY_SETTINGS: GameSettings = {
-  minPlayers: 4,
+  minPlayers: 2,
   maxPlayers: 10,
   targetPlayers: 6,
   discussionDurationSeconds: 60,

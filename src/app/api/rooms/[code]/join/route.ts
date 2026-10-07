@@ -8,12 +8,13 @@ export async function POST(
   try {
     const { code } = await params;
     const body = await req.json();
-    const { playerName, avatar } = body;
+    const { playerName, avatar, playerId } = body;
 
     const result = await RoomService.joinRoom({
       roomCode: code,
       playerName,
       avatar,
+      playerId,
     });
 
     return NextResponse.json({ success: true, ...result });

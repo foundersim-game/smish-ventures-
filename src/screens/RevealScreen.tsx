@@ -182,10 +182,7 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
   };
 
   return (
-    <div
-      className="relative min-h-[100dvh] w-full flex flex-col justify-between px-4 pt-5 pb-12 bg-[#080210] select-none overflow-y-auto overflow-x-hidden"
-      style={{ paddingBottom: "max(3rem, env(safe-area-inset-bottom, 28px))" }}
-    >
+    <div className="relative h-full max-h-[100dvh] w-full flex flex-col justify-between px-3.5 py-1.5 sm:py-2 bg-[#080210] select-none overflow-hidden">
       {/* Top Header (Screen Reveal End) */}
       <TopHeader
         currentRound={room.currentRoundIndex}
@@ -197,7 +194,7 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
       <PhaseStepper currentPhase="reveal_beat_6" />
 
       {/* Main Container */}
-      <div className="flex flex-col items-center max-w-sm mx-auto w-full my-auto py-1">
+      <div className="flex-1 min-h-0 flex flex-col items-center max-w-sm mx-auto w-full my-auto py-0.5 overflow-y-auto no-scrollbar">
         {/* ============================================================== */}
         {/* VIEW 1: EARLY BEATS 1, 2, 3 (Screen_Reveal.png Beats 1 to 3) */}
         {/* ============================================================== */}
@@ -244,7 +241,7 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
                 All players have locked their final vote!
               </span>
 
-              <div className="w-full grid grid-cols-6 gap-1 py-1">
+              <div className="w-full flex flex-wrap gap-2 items-center justify-center py-1">
                 {players.map((p) => (
                   <div key={p.id} className="flex flex-col items-center">
                     <AvatarBadge
@@ -351,12 +348,12 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
                   <div
                     key={opt.id}
                     className={`
-                      p-2 rounded-2xl flex flex-col items-center text-center transition-all duration-200 border relative min-h-[165px]
+                      p-1.5 rounded-xl flex flex-col items-center text-center transition-all duration-200 border relative min-h-[120px]
                       ${
                         isWinner
-                          ? "bg-[#0E2047] border-2 border-[#00D2FF] shadow-[0_0_20px_rgba(0,210,255,0.6)] scale-[1.02]"
+                          ? "bg-[#0E2047] border-2 border-[#00D2FF] shadow-[0_0_16px_rgba(0,210,255,0.6)] scale-[1.02]"
                           : isTied
-                          ? "bg-[#251508]/90 border-amber-500/60 shadow-[0_0_12px_rgba(245,158,11,0.3)]"
+                          ? "bg-[#251508]/90 border-amber-500/60 shadow-[0_0_10px_rgba(245,158,11,0.3)]"
                           : "bg-[#180C2E]/90 border-purple-800/40"
                       }
                     `}
@@ -489,10 +486,10 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
             </div>
 
             {/* Glowing Magenta Pill Button: NEXT ROUND (Screen Reveal End) */}
-            <div className="w-full mt-3 mb-6">
+            <div className="w-full mt-2 mb-2">
               <button
                 onClick={handleNextRoundClick}
-                className="w-full py-4 rounded-3xl bg-gradient-to-r from-[#C026D3] via-[#A21CAF] to-[#701A75] text-white font-display font-black text-sm uppercase tracking-wider shadow-[0_8px_30px_rgba(192,38,211,0.6)] border-2 border-pink-400/50 active:scale-[0.98] transition-transform cursor-pointer"
+                className="w-full py-3 sm:py-3.5 rounded-2xl bg-gradient-to-r from-[#C026D3] via-[#A21CAF] to-[#701A75] text-white font-display font-black text-xs sm:text-sm uppercase tracking-wider shadow-[0_6px_24px_rgba(192,38,211,0.6)] border-2 border-pink-400/50 active:scale-[0.98] transition-transform cursor-pointer"
               >
                 {resolution.switchedPlayerCount > 0 ? "NEXT: WHO GOT INFLUENCED?" : "NEXT: SEE CONSEQUENCES"}
               </button>
