@@ -30,16 +30,34 @@ const PLAYER_ID_KEY = "chaos_persistent_player_id";
 
 export class PlayerStorage {
   public static getOrCreatePlayerId(): string {
-    if (typeof window === "undefined") return "server_player";
+    if (typeof window === "undefined") {
+      return "00000000-0000-0000-0000-000000000001";
+    }
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     try {
       let id = localStorage.getItem(PLAYER_ID_KEY);
-      if (!id) {
-        id = `PLY-${crypto.randomUUID()}`;
+      // Clean up legacy non-UUID or PLY- prefixed IDs
+      if (id && id.startsWith("PLY-")) {
+        const stripped = id.replace(/^PLY-/, "");
+        if (uuidRegex.test(stripped)) {
+          id = stripped;
+        } else {
+          id = null;
+        }
+      }
+      if (!id || !uuidRegex.test(id)) {
+        id = typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+              const r = (Math.random() * 16) | 0;
+              const v = c === "x" ? r : (r & 0x3) | 0x8;
+              return v.toString(16);
+            });
         localStorage.setItem(PLAYER_ID_KEY, id);
       }
       return id;
     } catch {
-      return `PLY-fallback-${Date.now()}`;
+      return "11111111-1111-4111-a111-111111111111";
     }
   }
 

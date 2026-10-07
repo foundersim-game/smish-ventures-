@@ -306,14 +306,23 @@ export default function ChaosMainApp() {
 
     sse.addEventListener("PLAYER_JOINED", (e) => {
       const data = JSON.parse(e.data);
-      setJoinToast(`🎉 ${data.player.name} joined the party!`);
+      if (data?.player) {
+        setPlayers((prev) => {
+          if (prev.some((p) => p.id === data.player.id)) return prev;
+          return [...prev, data.player];
+        });
+      }
+      setJoinToast(`🎉 ${data.player?.name || "A player"} joined the party!`);
       audio.play("click");
       setTimeout(() => setJoinToast(null), 3000);
     });
 
     sse.addEventListener("PLAYER_LEFT", (e) => {
       const data = JSON.parse(e.data);
-      setJoinToast(`👋 ${data.playerName} left the party.`);
+      if (data?.playerId) {
+        setPlayers((prev) => prev.filter((p) => p.id !== data.playerId));
+      }
+      setJoinToast(`👋 ${data.playerName || "A player"} left the party.`);
       setTimeout(() => setJoinToast(null), 3000);
     });
 
@@ -705,10 +714,16 @@ export default function ChaosMainApp() {
   const handleAddBot = async () => {
     if (!room || !currentPlayer) return;
     try {
-      await ApiClient.addBotPlayer(room.roomCode, currentPlayer.id);
+      const res = await ApiClient.addBotPlayer(room.roomCode, currentPlayer.id);
+      if (res?.player) {
+        setPlayers((prev) => {
+          if (prev.some((p) => p.id === res.player.id)) return prev;
+          return [...prev, res.player];
+        });
+      }
       const updated = await ApiClient.getRoom(room.roomCode);
-      setRoom(updated.room);
-      setPlayers(updated.players);
+      if (updated?.room) setRoom(updated.room);
+      if (updated?.players?.length) setPlayers(updated.players);
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Failed to add bot player");
     }

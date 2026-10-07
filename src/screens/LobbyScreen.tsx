@@ -53,6 +53,17 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
   const [loadingBot, setLoadingBot] = useState(false);
   const [showHostPass, setShowHostPass] = useState(false);
 
+  // Resilient player roster: guarantee current player is always visible even during initial fetch
+  const effectivePlayers = React.useMemo(() => {
+    if (players && players.length > 0) {
+      if (currentPlayer && !players.some((p) => p.id === currentPlayer.id)) {
+        return [currentPlayer, ...players];
+      }
+      return players;
+    }
+    return currentPlayer ? [currentPlayer] : [];
+  }, [players, currentPlayer]);
+
   // Multi-tier resilient host identification to ensure host is never locked out
   const activeSession = PlayerStorage.getActiveSession();
   const isHost =
@@ -60,16 +71,16 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
     room.hostId === currentPlayerId ||
     room.hostId === currentPlayer?.id ||
     Boolean(activeSession?.isHost && activeSession?.roomCode === room.roomCode) ||
-    players.some((p) => (p.id === currentPlayerId || p.id === currentPlayer?.id) && p.isHost) ||
-    (players.length > 0 && players[0].id === (currentPlayer?.id || currentPlayerId)) ||
-    (players.length > 0 && Boolean(currentPlayer?.name) && players[0].name.trim().toLowerCase() === (currentPlayer?.name || "").trim().toLowerCase());
+    effectivePlayers.some((p) => (p.id === currentPlayerId || p.id === currentPlayer?.id) && p.isHost) ||
+    (effectivePlayers.length > 0 && effectivePlayers[0].id === (currentPlayer?.id || currentPlayerId)) ||
+    (effectivePlayers.length > 0 && Boolean(currentPlayer?.name) && effectivePlayers[0].name.trim().toLowerCase() === (currentPlayer?.name || "").trim().toLowerCase());
 
   const minRequired = room.mode === "couples" ? 2 : Math.min(room.settings.minPlayers || 2, 2);
   const targetPlayers =
     room.settings.targetPlayers ||
     (room.mode === "couples" ? 2 : room.settings.maxPlayers);
-  const canStart = players.length >= minRequired;
-  const emptySlotsCount = Math.max(0, targetPlayers - players.length);
+  const canStart = effectivePlayers.length >= minRequired;
+  const emptySlotsCount = Math.max(0, targetPlayers - effectivePlayers.length);
 
   const handleAddBotClick = async () => {
     if (loadingBot || !onAddBot) return;
@@ -192,7 +203,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
         <div className="flex-1 min-h-0 flex flex-col justify-between w-full">
           <div className="flex items-center justify-between mb-1.5 px-1">
             <span className="font-display font-extrabold text-xs text-white uppercase tracking-wider">
-              PLAYERS ({players.length}/{targetPlayers})
+              PLAYERS ({effectivePlayers.length}/{targetPlayers})
             </span>
             {canStart ? (
               <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1 animate-pulse">
@@ -201,14 +212,14 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
               </span>
             ) : (
               <span className="text-[11px] text-yellow-400 font-bold">
-                Need {minRequired - players.length} more...
+                Need {minRequired - effectivePlayers.length} more...
               </span>
             )}
           </div>
 
           {/* Players Avatar Grid */}
           <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar grid grid-cols-4 gap-y-2.5 gap-x-2 py-1 content-start">
-            {players.map((p) => (
+            {effectivePlayers.map((p) => (
               <div key={p.id} className="relative group flex flex-col items-center">
                 <AvatarBadge
                   name={p.name}

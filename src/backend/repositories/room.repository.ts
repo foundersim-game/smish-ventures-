@@ -6,11 +6,36 @@ const globalForRepo = globalThis as unknown as {
   chaosRoomRepository: RoomRepository | undefined;
 };
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function normalizeUuid(id: string | null | undefined): string {
+  if (!id) return "00000000-0000-4000-a000-000000000001";
+  if (id.startsWith("PLY-")) {
+    const stripped = id.replace(/^PLY-/, "");
+    if (UUID_REGEX.test(stripped)) return stripped;
+  }
+  if (UUID_REGEX.test(id)) return id;
+  // Convert any arbitrary string into a deterministic UUID v4 format
+  let hash1 = 0;
+  let hash2 = 0;
+  for (let i = 0; i < id.length; i++) {
+    const ch = id.charCodeAt(i);
+    hash1 = ((hash1 << 5) - hash1 + ch) | 0;
+    hash2 = ((hash2 << 7) - hash2 + ch) | 0;
+  }
+  const part1 = Math.abs(hash1).toString(16).padStart(8, "0").slice(0, 8);
+  const part2 = Math.abs(hash2).toString(16).padStart(4, "0").slice(0, 4);
+  const part3 = "4" + Math.abs(hash1 ^ hash2).toString(16).padStart(3, "0").slice(0, 3);
+  const part4 = "a" + Math.abs(hash1 + hash2).toString(16).padStart(3, "0").slice(0, 3);
+  const part5 = (Math.abs(hash1).toString(16) + Math.abs(hash2).toString(16)).padStart(12, "0").slice(0, 12);
+  return `${part1}-${part2}-${part3}-${part4}-${part5}`;
+}
+
 function toDbRoom(r: RoomSession): Record<string, unknown> {
   return {
-    id: r.id,
+    id: normalizeUuid(r.id),
     room_code: r.roomCode.toUpperCase(),
-    host_id: r.hostId,
+    host_id: normalizeUuid(r.hostId),
     mode: r.mode,
     phase: r.phase,
     phase_start_timestamp: r.phaseStartTimestamp,
@@ -65,8 +90,8 @@ function toDbRoomPatch(patch: Partial<RoomSession>): Record<string, unknown> {
 
 function toDbPlayer(p: PlayerSession, roomCode: string): Record<string, unknown> {
   return {
-    id: p.id,
-    room_id: p.roomId,
+    id: normalizeUuid(p.id),
+    room_id: normalizeUuid(p.roomId),
     room_code: (roomCode || "CHAOS").toUpperCase(),
     name: p.name,
     avatar: p.avatar,
@@ -285,29 +310,41 @@ export class RoomRepository {
   }
 
   public async getPlayers(roomId: string): Promise<PlayerSession[]> {
+    const cachedMap = this.playersByRoom.get(roomId);
+    const cachedPlayers = cachedMap ? Array.from(cachedMap.values()) : [];
+
     try {
       const supabase = getSupabaseClient();
+      const normRoomId = normalizeUuid(roomId);
       const { data, error } = await supabase
         .from("players")
         .select("*")
-        .eq("room_id", roomId);
+        .eq("room_id", normRoomId);
 
-      if (!error && data) {
+      if (!error && data && data.length > 0) {
         const players = data.map(fromDbPlayer);
         const map = new Map<string, PlayerSession>();
         for (const p of players) {
           map.set(p.id, p);
         }
+        // Preserve any in-memory players that might not yet have synced to Supabase
+        for (const cp of cachedPlayers) {
+          if (!map.has(cp.id)) {
+            map.set(cp.id, cp);
+          }
+        }
         this.playersByRoom.set(roomId, map);
-        return players;
+        return Array.from(map.values());
       }
     } catch (err) {
       console.error("[RoomRepository] Supabase getPlayers error:", err);
     }
 
-    const map = this.playersByRoom.get(roomId);
-    if (!map) return [];
-    return Array.from(map.values());
+    if (cachedPlayers.length > 0) {
+      return cachedPlayers;
+    }
+
+    return [];
   }
 
   public getPlayersSync(roomId: string): PlayerSession[] {
