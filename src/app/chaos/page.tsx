@@ -1,15 +1,15 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { GameMode, GamePhase, GameSettings, RoomSession } from "@/core/types/room.types";
 import { AvatarKey, PlayerSession } from "@/core/types/player.types";
 import { ScenarioDefinition } from "@/core/types/scenario.types";
 import { RoundVoteResolution } from "@/core/types/vote.types";
-import { ChaosReportSummary } from "@/core/types/scoring.types";
+import { ChaosReportSummary, PlayerScoreBreakdown } from "@/core/types/scoring.types";
 import { ChaosModifier } from "@/core/types/chaos-events.types";
 import { MissionEvaluationResult } from "@/core/types/mission.types";
 import { ScenarioRegistry } from "@/backend/data/scenarios";
-import { PlayerStorage } from "@/services/storage/player-storage";
+import { PlayerStorage, ActiveSession } from "@/services/storage/player-storage";
 import { ApiClient, getApiBaseUrl } from "@/services/network/api-client";
 import { VoteEvaluator } from "@/core/engine/vote-evaluator";
 import { audio } from "@/services/audio/audio-manager";
@@ -61,6 +61,25 @@ type ViewState =
   | "store"
   | "profile";
 
+const PHASE_ORDER: Record<string, number> = {
+  lobby: 0,
+  initial_vote: 1,
+  discussion: 2,
+  final_vote: 3,
+  reveal_beat_1: 4,
+  reveal_beat_2: 5,
+  reveal_beat_3: 6,
+  reveal_beat_4: 7,
+  reveal_beat_5: 8,
+  reveal_beat_6: 9,
+  consequence: 10,
+  round_wrap: 11,
+  influence: 12,
+  blame: 13,
+  halftime: 14,
+  chaos_report: 15,
+};
+
 export default function ChaosMainApp() {
   const [showSplash, setShowSplash] = useState<boolean>(true);
   const [view, setView] = useState<ViewState>("home");
@@ -82,7 +101,7 @@ export default function ChaosMainApp() {
     chaosMomentMessage: string | null;
   } | null>(null);
   const [scoreBreakdowns, setScoreBreakdowns] = useState<
-    Record<string, import("@/core/types/scoring.types").PlayerScoreBreakdown>
+    Record<string, PlayerScoreBreakdown>
   >({});
   const [missionResults, setMissionResults] = useState<MissionEvaluationResult[]>([]);
 
@@ -96,7 +115,7 @@ export default function ChaosMainApp() {
   const [hasSeenHalftime, setHasSeenHalftime] = useState(false);
 
   // Active Session Persistence State
-  const [activeSession, setActiveSession] = useState<import("@/services/storage/player-storage").ActiveSession | null>(null);
+  const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const roomRef = useRef<RoomSession | null>(room);
@@ -374,7 +393,7 @@ export default function ChaosMainApp() {
         bgColor: bgMap[data.buzzerType as ReactionBuzzerType] || "bg-red-900/90",
       });
 
-      // Meme sound plays ONLY on sender device (handled locally in ReactionBuzzerBar).
+      // Meme sound plays ONLY on sender's device (handled locally in ReactionBuzzerBar).
       // Remote devices only show the visual banner alert.
       setTimeout(() => setBuzzerAlert(null), 3500);
     });
@@ -472,7 +491,21 @@ export default function ChaosMainApp() {
         const fresh = await ApiClient.getRoom(room.roomCode);
         if (!isMounted) return;
 
+        const currentRoundIdx = room.currentRoundIndex;
         setPlayers((prev) => {
+          const isSameRound = fresh.room.currentRoundIndex === currentRoundIdx;
+          const mergedPlayers = fresh.players.map((fp) => {
+            const existing = prev.find((p) => p.id === fp.id);
+            if (!existing || !isSameRound) return fp;
+            return {
+              ...fp,
+              hasLockedInitialVote: existing.hasLockedInitialVote || fp.hasLockedInitialVote,
+              hasLockedFinalVote: existing.hasLockedFinalVote || fp.hasLockedFinalVote,
+              initialVoteOptionId: existing.initialVoteOptionId || fp.initialVoteOptionId,
+              finalVoteOptionId: existing.finalVoteOptionId || fp.finalVoteOptionId,
+            };
+          });
+
           const prevStr = JSON.stringify(
             prev.map((p) => ({
               id: p.id,
@@ -485,7 +518,7 @@ export default function ChaosMainApp() {
             }))
           );
           const freshStr = JSON.stringify(
-            fresh.players.map((p) => ({
+            mergedPlayers.map((p) => ({
               id: p.id,
               ready: p.ready,
               connected: p.connected,
@@ -495,7 +528,7 @@ export default function ChaosMainApp() {
               score: p.stats.totalScore,
             }))
           );
-          return prevStr !== freshStr ? fresh.players : prev;
+          return prevStr !== freshStr ? mergedPlayers : prev;
         });
 
         if (fresh.resolution && !resolution) {
@@ -507,6 +540,20 @@ export default function ChaosMainApp() {
 
         setRoom((prev) => {
           if (!prev) return fresh.room;
+
+          // Never revert round index backward
+          if (fresh.room.currentRoundIndex < prev.currentRoundIndex) {
+            return prev;
+          }
+
+          // If within the same round, only advance phase forward (never downgrade phase)
+          if (
+            fresh.room.currentRoundIndex === prev.currentRoundIndex &&
+            (PHASE_ORDER[fresh.room.phase] ?? 0) < (PHASE_ORDER[prev.phase] ?? 0)
+          ) {
+            return prev;
+          }
+
           if (
             prev.phase !== fresh.room.phase ||
             prev.currentRoundIndex !== fresh.room.currentRoundIndex ||
@@ -534,15 +581,32 @@ export default function ChaosMainApp() {
             }
             setCurrentPlayer((prev) => {
               if (!prev) return freshMe;
+              const isSameRound = fresh.room.currentRoundIndex === currentRoundIdx;
+              const protectedFreshMe = {
+                ...freshMe,
+                hasLockedInitialVote: isSameRound
+                  ? prev.hasLockedInitialVote || freshMe.hasLockedInitialVote
+                  : freshMe.hasLockedInitialVote,
+                hasLockedFinalVote: isSameRound
+                  ? prev.hasLockedFinalVote || freshMe.hasLockedFinalVote
+                  : freshMe.hasLockedFinalVote,
+                initialVoteOptionId: isSameRound
+                  ? prev.initialVoteOptionId || freshMe.initialVoteOptionId
+                  : freshMe.initialVoteOptionId,
+                finalVoteOptionId: isSameRound
+                  ? prev.finalVoteOptionId || freshMe.finalVoteOptionId
+                  : freshMe.finalVoteOptionId,
+              };
+
               if (
-                prev.hasLockedInitialVote !== freshMe.hasLockedInitialVote ||
-                prev.hasLockedFinalVote !== freshMe.hasLockedFinalVote ||
-                prev.initialVoteOptionId !== freshMe.initialVoteOptionId ||
-                prev.finalVoteOptionId !== freshMe.finalVoteOptionId ||
-                prev.isHost !== freshMe.isHost ||
-                JSON.stringify(prev.secretMission) !== JSON.stringify(freshMe.secretMission)
+                prev.hasLockedInitialVote !== protectedFreshMe.hasLockedInitialVote ||
+                prev.hasLockedFinalVote !== protectedFreshMe.hasLockedFinalVote ||
+                prev.initialVoteOptionId !== protectedFreshMe.initialVoteOptionId ||
+                prev.finalVoteOptionId !== protectedFreshMe.finalVoteOptionId ||
+                prev.isHost !== protectedFreshMe.isHost ||
+                JSON.stringify(prev.secretMission) !== JSON.stringify(protectedFreshMe.secretMission)
               ) {
-                return freshMe;
+                return protectedFreshMe;
               }
               return prev;
             });
@@ -676,7 +740,7 @@ export default function ChaosMainApp() {
   };
 
   // Manual Rejoin from Home screen CTA
-  const handleRejoinSession = async (session: import("@/services/storage/player-storage").ActiveSession) => {
+  const handleRejoinSession = async (session: ActiveSession) => {
     try {
       const fresh = await ApiClient.getRoom(session.roomCode);
       const me = fresh.players.find(
@@ -787,6 +851,13 @@ export default function ChaosMainApp() {
     setCurrentPlayer((prev) =>
       prev ? { ...prev, initialVoteOptionId: optionId, hasLockedInitialVote: true } : prev
     );
+    setPlayers((prev) =>
+      prev.map((p) =>
+        p.id === currentPlayer.id
+          ? { ...p, initialVoteOptionId: optionId, hasLockedInitialVote: true }
+          : p
+      )
+    );
     try {
       await ApiClient.sendAction(room.roomCode, currentPlayer.id, "LOCK_INITIAL_VOTE", {
         optionId,
@@ -836,11 +907,16 @@ export default function ChaosMainApp() {
     }
   };
 
-  // Discussion time expires
+  // Discussion time expires or Vote Now clicked
   const handleDiscussionTimeUp = async () => {
     if (!room || !currentPlayer) return;
+    // Optimistically advance room phase so there is zero latency flicker
+    setRoom((prev) => (prev ? { ...prev, phase: "final_vote" } : prev));
     try {
-      await ApiClient.sendAction(room.roomCode, currentPlayer.id, "SKIP_DISCUSSION");
+      const res = await ApiClient.sendAction(room.roomCode, currentPlayer.id, "SKIP_DISCUSSION");
+      if (res?.room) {
+        setRoom(res.room);
+      }
     } catch (err: unknown) {
       console.error(err);
     }
@@ -852,6 +928,13 @@ export default function ChaosMainApp() {
     // Optimistic local state update for instant UI feedback
     setCurrentPlayer((prev) =>
       prev ? { ...prev, finalVoteOptionId: optionId, hasLockedFinalVote: true } : prev
+    );
+    setPlayers((prev) =>
+      prev.map((p) =>
+        p.id === currentPlayer.id
+          ? { ...p, finalVoteOptionId: optionId, hasLockedFinalVote: true }
+          : p
+      )
     );
     try {
       await ApiClient.sendAction(room.roomCode, currentPlayer.id, "LOCK_FINAL_VOTE", {
@@ -904,19 +987,24 @@ export default function ChaosMainApp() {
     }
   };
 
-  // Advance reveal beat
-  const handleAdvanceRevealBeat = async (targetBeat: GamePhase) => {
-    if (!room || !currentPlayer) return;
-    try {
-      await ApiClient.sendAction(room.roomCode, currentPlayer.id, "ADVANCE_REVEAL_BEAT", {
-        targetBeat,
-      });
-      const updated = await ApiClient.getRoom(room.roomCode);
-      setRoom(updated.room);
-    } catch (err: unknown) {
-      console.error(err);
-    }
-  };
+  // Advance reveal beat (memoized to prevent duplicate render loops)
+  const handleAdvanceRevealBeat = useCallback(
+    async (targetBeat: GamePhase) => {
+      const currentCode = room?.roomCode;
+      const currentMyId = currentPlayer?.id;
+      if (!currentCode || !currentMyId) return;
+      try {
+        await ApiClient.sendAction(currentCode, currentMyId, "ADVANCE_REVEAL_BEAT", {
+          targetBeat,
+        });
+        const updated = await ApiClient.getRoom(currentCode);
+        setRoom(updated.room);
+      } catch (err: unknown) {
+        console.error(err);
+      }
+    },
+    [room?.roomCode, currentPlayer?.id]
+  );
 
   // Submit Influence attribution
   const handleSubmitInfluence = async (targetPlayerId: string | null, reason?: string) => {

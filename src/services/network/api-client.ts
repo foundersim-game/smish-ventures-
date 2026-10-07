@@ -38,7 +38,10 @@ export class ApiClient {
     resolution?: RoundVoteResolution | null;
     consequence?: any;
   }> {
-    const res = await fetch(`${getApiBaseUrl()}/api/rooms/${code.toUpperCase()}`);
+    const res = await fetch(`${getApiBaseUrl()}/api/rooms/${code.toUpperCase()}?_t=${Date.now()}`, {
+      cache: "no-store",
+      headers: { "Cache-Control": "no-cache, no-store, must-revalidate" },
+    });
     const data = await res.json();
     if (!data.success) throw new Error(data.error);
     return data;

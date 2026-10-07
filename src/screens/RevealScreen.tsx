@@ -81,22 +81,35 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
 }) => {
   const currentPhase = room.phase;
 
+  const playedBeatsRef = React.useRef<Set<string>>(new Set());
+
+  // Reset played audio set on round transition
+  useEffect(() => {
+    playedBeatsRef.current.clear();
+  }, [room.currentRoundIndex]);
+
   // Staged automatic progression:
   // Beat 1: Face-Down Mystery Card -> Beat 2: Shakes with BGM Suspense -> Beat 3: Rotates & Fanfare -> Beat 6: Final Answer
   useEffect(() => {
     let timer: NodeJS.Timeout;
 
     if (currentPhase === "reveal_beat_1") {
-      audio.play("tick_calm");
+      if (!playedBeatsRef.current.has("reveal_beat_1")) {
+        playedBeatsRef.current.add("reveal_beat_1");
+        audio.play("tick_calm");
+      }
       if (isHost) {
         timer = setTimeout(() => {
           onAdvanceBeat("reveal_beat_2");
         }, 1000);
       }
     } else if (currentPhase === "reveal_beat_2") {
-      // Beat 2: Card shakes with suspense + plays BGM reveal music
-      audio.play("reveal_bgm");
-      haptics.trigger("heavy");
+      // Beat 2: Card shakes with suspense + plays BGM reveal music (strictly once)
+      if (!playedBeatsRef.current.has("reveal_beat_2")) {
+        playedBeatsRef.current.add("reveal_beat_2");
+        audio.play("reveal_bgm");
+        haptics.trigger("heavy");
+      }
       if (isHost) {
         timer = setTimeout(() => {
           onAdvanceBeat("reveal_beat_3");
@@ -104,7 +117,10 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
       }
     } else if (currentPhase === "reveal_beat_3") {
       // Beat 3: Card rotates in 3D to reveal front face
-      haptics.trigger("chaos_moment");
+      if (!playedBeatsRef.current.has("reveal_beat_3")) {
+        playedBeatsRef.current.add("reveal_beat_3");
+        haptics.trigger("chaos_moment");
+      }
       try {
         confetti({
           particleCount: 110,

@@ -330,6 +330,147 @@ class AudioManager {
   }
 
   /**
+   * Classic, punchy Game-Show Wrong Buzzer for "BULLSHIT!"
+   * Dual detuned saw/square oscillators with resonant gate. 0ms latency, zero robotic voice.
+   */
+  public playBullshitBuzzer(volume = 0.65): void {
+    if (!this.isSoundEnabled || typeof window === "undefined") return;
+    this.initContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc1 = this.ctx.createOscillator();
+      const osc2 = this.ctx.createOscillator();
+      const subOsc = this.ctx.createOscillator();
+      const filter = this.ctx.createBiquadFilter();
+      const gain = this.ctx.createGain();
+
+      osc1.type = "sawtooth";
+      osc1.frequency.setValueAtTime(132, now);
+
+      osc2.type = "square";
+      osc2.frequency.setValueAtTime(147, now);
+
+      subOsc.type = "square";
+      subOsc.frequency.setValueAtTime(66, now);
+
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(1500, now);
+      filter.Q.setValueAtTime(2.5, now);
+
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(volume * 0.45, now + 0.015);
+      gain.gain.setValueAtTime(volume * 0.45, now + 0.38);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.44);
+
+      osc1.connect(filter);
+      osc2.connect(filter);
+      subOsc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc1.start(now);
+      osc2.start(now);
+      subOsc.start(now);
+      osc1.stop(now + 0.45);
+      osc2.stop(now + 0.45);
+      subOsc.stop(now + 0.45);
+    } catch {
+      // Ignored
+    }
+  }
+
+  /**
+   * Comical Cartoon Spring "BOING" for "CAP!"
+   * Rubbery pitch-swoop with spring vibrato modulation. Pure meme hilarity.
+   */
+  public playCapSound(volume = 0.6): void {
+    if (!this.isSoundEnabled || typeof window === "undefined") return;
+    this.initContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      // LFO for cartoon spring wobble
+      const lfo = this.ctx.createOscillator();
+      const lfoGain = this.ctx.createGain();
+      lfo.type = "sine";
+      lfo.frequency.setValueAtTime(26, now);
+      lfoGain.gain.setValueAtTime(45, now);
+      lfo.connect(osc.frequency);
+
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(750, now);
+      osc.frequency.exponentialRampToValueAtTime(190, now + 0.4);
+
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(volume * 0.45, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      lfo.start(now);
+      osc.start(now);
+      lfo.stop(now + 0.44);
+      osc.stop(now + 0.44);
+    } catch {
+      // Ignored
+    }
+  }
+
+  /**
+   * Heavy Metallic Anvil Slam & Deep Sub-Bass Impact for "NO MOVE"
+   * Sounds like an immovable iron block or brick wall slamming into place.
+   */
+  public playNoMoveAnvil(volume = 0.65): void {
+    if (!this.isSoundEnabled || typeof window === "undefined") return;
+    this.initContext();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+
+      // 1. Inharmonic metallic ring cluster (Anvil)
+      const freqs = [840, 1320, 1980];
+      freqs.forEach((f, idx) => {
+        if (!this.ctx) return;
+        const metalOsc = this.ctx.createOscillator();
+        const metalGain = this.ctx.createGain();
+        metalOsc.type = "sine";
+        metalOsc.frequency.setValueAtTime(f, now);
+
+        metalGain.gain.setValueAtTime(volume * (0.28 / (idx + 1)), now);
+        metalGain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+
+        metalOsc.connect(metalGain);
+        metalGain.connect(this.ctx.destination);
+        metalOsc.start(now);
+        metalOsc.stop(now + 0.35);
+      });
+
+      // 2. Heavy sub-bass thud (65Hz -> 32Hz)
+      const sub = this.ctx.createOscillator();
+      const subGain = this.ctx.createGain();
+      sub.type = "sine";
+      sub.frequency.setValueAtTime(68, now);
+      sub.frequency.exponentialRampToValueAtTime(32, now + 0.38);
+
+      subGain.gain.setValueAtTime(volume * 0.5, now);
+      subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+
+      sub.connect(subGain);
+      subGain.connect(this.ctx.destination);
+      sub.start(now);
+      sub.stop(now + 0.42);
+    } catch {
+      // Ignored
+    }
+  }
+
+
+  /**
    * Complete Game-Show BGM Reveal Music Cue
    * Phase 1: High-suspense cinematic riser with ticking heartbeat & swelling synth pad (0.0s - 1.8s)
    * Phase 2: Rapid 3D card flip whoosh sweep (1.6s - 1.85s)
@@ -608,8 +749,24 @@ class AudioManager {
       return;
     }
 
+    // Dedicated procedural meme sounds
+    if (type === "buzzer_bullshit" || type === "buzzer") {
+      this.playBullshitBuzzer(volume);
+      return;
+    }
+
+    if (type === "buzzer_cap" || type === "invalid") {
+      this.playCapSound(volume);
+      return;
+    }
+
+    if (type === "buzzer_anvil") {
+      this.playNoMoveAnvil(volume);
+      return;
+    }
+
     // Replace abrasive BAM metallic crashes with warm, smooth cinematic bass drops
-    if (type === "strike" || type === "phones_down" || type === "buzzer_anvil") {
+    if (type === "strike" || type === "phones_down") {
       this.playCinematicDrop(volume * 0.4);
       return;
     }

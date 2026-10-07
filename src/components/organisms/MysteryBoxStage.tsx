@@ -34,7 +34,6 @@ export const MysteryBoxStage: React.FC<MysteryBoxStageProps> = ({
 
   useEffect(() => {
     if (phase === "reveal_beat_2") {
-      audio.play("reveal_bgm");
       haptics.trigger("heavy");
     } else if (phase === "reveal_beat_3") {
       haptics.trigger("chaos_moment");

@@ -6,6 +6,9 @@ import { GameplayService } from "../../../../backend/services/gameplay.service";
 import { getSupabaseClient } from "../../../../services/supabase/supabase-client";
 import { VoteEvaluator } from "../../../../core/engine/vote-evaluator";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ code: string }> }
@@ -54,14 +57,23 @@ export async function GET(
     }
   }
 
-  return NextResponse.json({
-    success: true,
-    room,
-    players,
-    scenario,
-    resolution,
-    consequence,
-  });
+  return NextResponse.json(
+    {
+      success: true,
+      room,
+      players,
+      scenario,
+      resolution,
+      consequence,
+    },
+    {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
+    }
+  );
 }
 
 export async function PATCH(
