@@ -58,20 +58,8 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         />
       </div>
 
-      {/* Right controls: Music Toggle & Round Indicator Pill */}
+      {/* Right controls: Round Indicator Pill */}
       <div className="flex items-center gap-2 z-10">
-        <button
-          onClick={handleMusicToggle}
-          title={isMusicOn ? "Mute Background Music" : "Unmute Background Music"}
-          className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all active:scale-90 ${
-            isMusicOn
-              ? "bg-purple-900/70 border-amber-400/40 text-amber-300 shadow-[0_0_12px_rgba(251,191,36,0.3)]"
-              : "bg-purple-950/60 border-purple-800/40 text-gray-500"
-          }`}
-        >
-          {isMusicOn ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-        </button>
-
         {showRoundPill ? (
           <div className="px-2.5 py-1 rounded-full bg-[#1F1238] border border-purple-500/40 text-xs font-extrabold shadow-inner flex items-center gap-1">
             <span className="text-gray-300 font-sans text-[11px]">R</span>

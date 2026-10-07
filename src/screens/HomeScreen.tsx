@@ -7,6 +7,7 @@ import {
   Layers,
   Trophy,
   ShoppingCart,
+  User,
   X,
   Sparkles,
 } from "lucide-react";
@@ -22,6 +23,9 @@ interface HomeScreenProps {
   onCreateParty: () => void;
   onJoinParty: () => void;
   onCouplesMode: () => void;
+  onOpenAchievements?: () => void;
+  onOpenStore?: () => void;
+  onOpenProfile?: () => void;
   activeSession?: ActiveSession | null;
   onRejoinSession?: (session: ActiveSession) => void;
   onDismissSession?: () => void;
@@ -31,6 +35,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onCreateParty,
   onJoinParty,
   onCouplesMode,
+  onOpenAchievements,
+  onOpenStore,
+  onOpenProfile,
   activeSession,
   onRejoinSession,
   onDismissSession,
@@ -225,36 +232,37 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </button>
       </div>
 
-      {/* Bottom Navigation Dock (Matching Screen_1.png) */}
+      {/* Bottom Navigation Dock (Matching Screen_1.png - full page routing) */}
       <footer className="relative z-10 w-full max-w-sm mx-auto px-4 pb-3 pt-2 flex-shrink-0">
         <div className="w-full rounded-3xl bg-[#14062B]/90 border border-purple-500/25 backdrop-blur-xl px-3 py-2 flex items-center justify-around shadow-2xl">
           <button
             onClick={() => {
               audio.play("click");
-              setShowHowToPlay(true);
             }}
-            className="flex flex-col items-center text-white/95 font-semibold group cursor-pointer"
+            className="flex flex-col items-center text-white font-semibold group cursor-pointer"
           >
-            <BarChart3 className="w-5 h-5 text-white/95 mb-0.5" />
-            <span className="text-[10px] tracking-wide">My Games</span>
-          </button>
-
-          <button
-            onClick={() => {
-              audio.play("click");
-              onCreateParty();
-            }}
-            className="flex flex-col items-center text-white/60 hover:text-white transition-colors cursor-pointer group"
-          >
-            <Layers className="w-5 h-5 text-white/60 mb-0.5 group-hover:text-white" />
-            <span className="text-[10px] tracking-wide">Scenarios</span>
+            <BarChart3 className="w-5 h-5 text-[#FF2A6D] mb-0.5 group-hover:scale-110 transition-transform" />
+            <span className="text-[10px] tracking-wide text-white">Home</span>
           </button>
 
           <button
             onClick={() => {
               audio.play("click");
               haptics.trigger("light");
-              setShowProfileModal(true);
+              if (onOpenProfile) onOpenProfile();
+              else setShowProfileModal(true);
+            }}
+            className="flex flex-col items-center text-white/60 hover:text-white transition-colors cursor-pointer group"
+          >
+            <User className="w-5 h-5 text-white/60 mb-0.5 group-hover:text-white" />
+            <span className="text-[10px] tracking-wide">My Player</span>
+          </button>
+
+          <button
+            onClick={() => {
+              audio.play("click");
+              haptics.trigger("light");
+              if (onOpenAchievements) onOpenAchievements();
             }}
             className="flex flex-col items-center text-white/60 hover:text-white transition-colors cursor-pointer group"
           >
@@ -266,7 +274,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             onClick={() => {
               audio.play("click");
               haptics.trigger("light");
-              setShowHostPassModal(true);
+              if (onOpenStore) onOpenStore();
+              else setShowHostPassModal(true);
             }}
             className="flex flex-col items-center text-white/60 hover:text-white transition-colors cursor-pointer group"
           >

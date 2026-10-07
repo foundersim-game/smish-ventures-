@@ -98,7 +98,13 @@ export const ScenarioSelectScreen: React.FC<ScenarioSelectScreenProps> = ({
               isCouples ? "bg-pink-500" : "bg-amber-400"
             }`}
           />
-          <div className="w-6 h-1 rounded-full bg-white/20" />
+          <div
+            className={`w-6 h-1 rounded-full ${
+              previewScenario
+                ? (isCouples ? "bg-pink-500" : "bg-amber-400")
+                : "bg-white/20"
+            }`}
+          />
           <div className="w-6 h-1 rounded-full bg-white/20" />
         </div>
 
@@ -196,7 +202,7 @@ export const ScenarioSelectScreen: React.FC<ScenarioSelectScreenProps> = ({
                       <h4 className="font-display font-black text-base sm:text-lg text-white tracking-tight leading-snug">
                         {sc.title}
                       </h4>
-                      <p className="text-gray-300 text-[11px] mt-0.5 leading-snug line-clamp-2">
+                      <p className="text-gray-300 text-[11px] mt-0.5 leading-snug">
                         {sc.tagline}
                       </p>
                     </div>
@@ -243,6 +249,30 @@ export const ScenarioSelectScreen: React.FC<ScenarioSelectScreenProps> = ({
       {/* VIEW B: WHAT'S INSIDE PREVIEW (Step 3/4) */}
       {previewScenario && (
         <div className="flex flex-col flex-1 min-h-0 overflow-hidden w-full max-w-sm mx-auto justify-between mt-1">
+          {/* Header Title Section (Step 3/4) */}
+          <div className="text-center mb-2 flex-shrink-0">
+            <div
+              className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-display font-black uppercase tracking-widest mb-1 ${
+                isCouples
+                  ? "bg-pink-500/20 border border-pink-500/40 text-pink-300 shadow-[0_0_12px_rgba(236,72,153,0.3)]"
+                  : "bg-amber-500/20 border border-amber-500/40 text-amber-300"
+              }`}
+            >
+              <Sparkles className="w-3 h-3 text-amber-400" />
+              <span>STEP 3 OF 4 • DECK OVERVIEW</span>
+            </div>
+
+            <h1 className="font-display font-black text-2xl sm:text-3xl text-white tracking-tight leading-none">
+              SCENARIO{" "}
+              <span className={isCouples ? "text-pink-400 drop-shadow-[0_0_16px_rgba(236,72,153,0.5)]" : "text-yellow-400"}>
+                DETAILS
+              </span>
+            </h1>
+            <p className="text-gray-300 text-[11px] mt-1 max-w-xs mx-auto leading-tight">
+              Review storyline, rules & squad mechanics before launching.
+            </p>
+          </div>
+
           {/* Scrollable Preview Content */}
           <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar flex flex-col gap-2.5 py-1 px-1">
             {/* Hero Banner Card */}

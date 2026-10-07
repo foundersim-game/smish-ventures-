@@ -108,7 +108,7 @@ export const ModeSelectScreen: React.FC<ModeSelectScreenProps> = ({
             <span className="text-[11px] font-bold text-yellow-300">
               3 – 10 players
             </span>
-            <p className="text-gray-300 text-[10px] mt-1 leading-tight line-clamp-2">
+            <p className="text-gray-300 text-[10px] mt-1 leading-tight">
               Friends. Arguments. Connected chaos rounds.
             </p>
           </div>
@@ -146,7 +146,7 @@ export const ModeSelectScreen: React.FC<ModeSelectScreenProps> = ({
             <span className="text-[11px] font-bold text-pink-400/80">
               2 players
             </span>
-            <p className="text-gray-400 text-[10px] mt-1 leading-tight line-clamp-2">
+            <p className="text-gray-400 text-[10px] mt-1 leading-tight">
               Dilemmas for two. Arriving soon!
             </p>
           </div>

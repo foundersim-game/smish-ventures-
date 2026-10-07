@@ -41,6 +41,9 @@ import { ReactionBuzzerType } from "@/core/types/events.types";
 import { RoundReceiptsSummary } from "@/core/types/influence.types";
 
 import { HalftimeScreen } from "@/screens/HalftimeScreen";
+import { AchievementsScreen } from "@/screens/AchievementsScreen";
+import { StoreScreen } from "@/screens/StoreScreen";
+import { PlayerProfileScreen } from "@/screens/PlayerProfileScreen";
 import { AnalyticsService } from "@/services/analytics/analytics.service";
 import { SplashScreen } from "@/components/organisms/SplashScreen";
 
@@ -53,7 +56,10 @@ type ViewState =
   | "lobby"
   | "gameplay"
   | "halftime"
-  | "chaos_report";
+  | "chaos_report"
+  | "achievements"
+  | "store"
+  | "profile";
 
 export default function ChaosMainApp() {
   const [showSplash, setShowSplash] = useState<boolean>(true);
@@ -368,11 +374,8 @@ export default function ChaosMainApp() {
         bgColor: bgMap[data.buzzerType as ReactionBuzzerType] || "bg-red-900/90",
       });
 
-      if (data.buzzerType === "bullshit") audio.play("buzzer_bullshit");
-      else if (data.buzzerType === "cap") audio.play("buzzer_cap");
-      else audio.play("buzzer_anvil");
-
-      haptics.trigger("heavy");
+      // Meme sound plays ONLY on sender device (handled locally in ReactionBuzzerBar).
+      // Remote devices only show the visual banner alert.
       setTimeout(() => setBuzzerAlert(null), 3500);
     });
 
@@ -1089,9 +1092,45 @@ export default function ChaosMainApp() {
               setSelectedScenario(ScenarioRegistry.getDefaultCouplesScenario());
               setView("scenario_select");
             }}
+            onOpenAchievements={() => setView("achievements")}
+            onOpenStore={() => setView("store")}
+            onOpenProfile={() => setView("profile")}
             activeSession={activeSession}
             onRejoinSession={handleRejoinSession}
             onDismissSession={handleDismissActiveSession}
+          />
+        )}
+
+        {/* ACHIEVEMENTS FULL PAGE SCREEN */}
+        {view === "achievements" && (
+          <AchievementsScreen
+            onBack={() => setView("home")}
+            onOpenHome={() => setView("home")}
+            onOpenProfile={() => setView("profile")}
+            onOpenStore={() => setView("store")}
+          />
+        )}
+
+        {/* STORE FULL PAGE SCREEN */}
+        {view === "store" && (
+          <StoreScreen
+            onBack={() => setView("home")}
+            onOpenHome={() => setView("home")}
+            onOpenProfile={() => setView("profile")}
+            onOpenAchievements={() => setView("achievements")}
+          />
+        )}
+
+        {/* MY PLAYER FULL PAGE SCREEN */}
+        {view === "profile" && (
+          <PlayerProfileScreen
+            onBack={() => setView("home")}
+            onOpenHome={() => setView("home")}
+            onOpenAchievements={() => setView("achievements")}
+            onOpenStore={() => setView("store")}
+            onSaved={(name, avatar) => {
+              setCurrentPlayer((prev) => (prev ? { ...prev, name, avatar } : prev));
+            }}
           />
         )}
 

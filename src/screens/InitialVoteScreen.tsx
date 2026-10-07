@@ -60,106 +60,110 @@ export const InitialVoteScreen: React.FC<InitialVoteScreenProps> = ({
       {/* 4-Step Stepper (Step 1 Active - Screen 8 & 10) */}
       <PhaseStepper currentPhase="initial_vote" />
 
-      {/* Scenario Dilemma Card (Screens 8, 9, 10) */}
-      <div className="mt-1 w-full max-w-sm mx-auto">
-        <div className="p-2.5 sm:p-3.5 rounded-2xl bg-gradient-to-b from-[#2E0F3E]/95 via-[#1D0830]/95 to-[#120422] border-2 border-pink-500/50 shadow-[0_0_20px_rgba(236,72,153,0.3)]">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] font-display font-black uppercase tracking-wider text-pink-400">
-              {(round.category || "PARTY").toUpperCase().replace("_", " ")}
-            </span>
-            <div className="flex items-center gap-1 text-[10px] font-bold text-amber-400">
-              <Signal className="w-3 h-3 fill-amber-400 text-amber-400" />
-              <span>{round.difficulty ? round.difficulty.toUpperCase() : "NORMAL"}</span>
-            </div>
-          </div>
-
-          <h2 className="font-display font-black text-base sm:text-lg md:text-xl text-white tracking-tight leading-snug line-clamp-3 sm:line-clamp-none">
-            {round.prompt}
-          </h2>
-
-          {round.question && (
-            <p className="text-gray-300 text-[11px] sm:text-xs mt-1 font-medium leading-tight line-clamp-2 sm:line-clamp-none">
-              {round.question}
-            </p>
-          )}
-
-          {/* Dynamic Squad Resource Balance (Only for rounds/scenarios tracking money) */}
-          {Boolean(
-            typeof room.resourceState?.balance === "number" &&
-            (round.highlightedText?.includes("$") ||
-             round.highlightedText?.includes("₹") ||
-             round.prompt.includes("$") ||
-             round.prompt.includes("₹") ||
-             round.question?.includes("$") ||
-             round.question?.includes("₹") ||
-             room.scenarioId === "night_out_01" ||
-             room.scenarioId === "travel_chaos" ||
-             room.scenarioId === "quick_chaos" ||
-             room.scenarioId === "goa_weekend" ||
-             room.scenarioId === "college_chaos" ||
-             room.scenarioId === "wedding_chaos")
-          ) && (
-            <div className="mt-1.5 px-2.5 py-1 rounded-lg bg-black/40 border border-amber-400/40 inline-flex items-center gap-1.5">
-              <span className="text-gray-300 text-[10px] font-semibold">Squad Balance:</span>
-              <span className="font-display font-black text-[#FFD23F] text-xs">
-                ${room.resourceState.balance?.toLocaleString()}
-              </span>
-            </div>
-          )}
-
-          {/* Asymmetric Secret Mission (GDD Section 8 & Secret Missions) */}
-          {currentPlayer.secretMission && (
-            <div className="mt-1.5">
-              <SecretMissionCard mission={currentPlayer.secretMission} />
-            </div>
-          )}
-
-          {/* Secret Intel Rule (GDD Section 8) */}
-          {round.secretIntelRule && !currentPlayer.secretMission && (
-            <div className="mt-1.5 p-2 rounded-xl bg-amber-500/15 border border-amber-400/50 flex items-start gap-1.5 text-left">
-              <span className="text-sm flex-shrink-0">🕵️</span>
-              <div>
-                <span className="text-amber-300 font-display font-black text-[9px] uppercase tracking-wider block">
-                  CONFIDENTIAL INTEL (YOU ONLY)
-                </span>
-                <p className="text-white text-[11px] font-medium leading-tight">
-                  {round.secretIntelRule.intelMessage}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* VIEW A: UNLOCKED STATE - 4 OPTIONS (Screens 8 & 9) */}
       {!isLocked && (
-        <div className="flex flex-col gap-1.5 sm:gap-2 my-auto w-full max-w-sm mx-auto py-1">
-          {round.options.map((opt) => (
-            <OptionCard
-              key={opt.id}
-              id={opt.id}
-              label={opt.label}
-              subtitle={opt.subtitle}
-              badgeColor={opt.badgeColor}
-              isSelected={selectedOptionId === opt.id}
-              onSelect={() => handleSelect(opt.id)}
-            />
-          ))}
+        <>
+          {/* Scrollable Dilemma & Options Content Container */}
+          <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar w-full max-w-sm mx-auto py-1.5 space-y-2.5">
+            {/* Scenario Dilemma Card (Screens 8, 9, 10) */}
+            <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-b from-[#2E0F3E]/95 via-[#1D0830]/95 to-[#120422] border-2 border-pink-500/50 shadow-[0_0_20px_rgba(236,72,153,0.3)]">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-display font-black uppercase tracking-wider text-pink-400">
+                  {(round.category || "PARTY").toUpperCase().replace("_", " ")}
+                </span>
+                <div className="flex items-center gap-1 text-[10px] font-bold text-amber-400">
+                  <Signal className="w-3 h-3 fill-amber-400 text-amber-400" />
+                  <span>{round.difficulty ? round.difficulty.toUpperCase() : "NORMAL"}</span>
+                </div>
+              </div>
 
-          {/* Privacy Pill (Screen 8 & 9) */}
-          <div className="py-1 px-2 rounded-xl bg-[#180A2E]/80 border border-purple-500/30 flex items-center justify-center gap-1.5 text-center mt-0.5">
-            <Lock className="w-3 h-3 text-purple-300" />
-            <span className="text-[10px] text-gray-300 font-medium">
-              Your choice is secret. No one will see your answer (yet).
-            </span>
+              <h2 className="font-display font-black text-base sm:text-lg md:text-xl text-white tracking-tight leading-snug">
+                {round.prompt}
+              </h2>
+
+              {round.question && (
+                <p className="text-gray-300 text-[11px] sm:text-xs mt-1.5 font-medium leading-relaxed">
+                  {round.question}
+                </p>
+              )}
+
+              {/* Dynamic Squad Resource Balance */}
+              {Boolean(
+                typeof room.resourceState?.balance === "number" &&
+                (round.highlightedText?.includes("$") ||
+                 round.highlightedText?.includes("₹") ||
+                 round.prompt.includes("$") ||
+                 round.prompt.includes("₹") ||
+                 round.question?.includes("$") ||
+                 round.question?.includes("₹") ||
+                 room.scenarioId === "night_out_01" ||
+                 room.scenarioId === "travel_chaos" ||
+                 room.scenarioId === "quick_chaos" ||
+                 room.scenarioId === "goa_weekend" ||
+                 room.scenarioId === "college_chaos" ||
+                 room.scenarioId === "wedding_chaos")
+              ) && (
+                <div className="mt-2 px-2.5 py-1 rounded-lg bg-black/40 border border-amber-400/40 inline-flex items-center gap-1.5">
+                  <span className="text-gray-300 text-[10px] font-semibold">Squad Balance:</span>
+                  <span className="font-display font-black text-[#FFD23F] text-xs">
+                    ${room.resourceState.balance?.toLocaleString()}
+                  </span>
+                </div>
+              )}
+
+              {/* Asymmetric Secret Mission */}
+              {currentPlayer.secretMission && (
+                <div className="mt-2">
+                  <SecretMissionCard mission={currentPlayer.secretMission} />
+                </div>
+              )}
+
+              {/* Secret Intel Rule */}
+              {round.secretIntelRule && !currentPlayer.secretMission && (
+                <div className="mt-2 p-2 rounded-xl bg-amber-500/15 border border-amber-400/50 flex items-start gap-1.5 text-left">
+                  <span className="text-sm flex-shrink-0">🕵️</span>
+                  <div>
+                    <span className="text-amber-300 font-display font-black text-[9px] uppercase tracking-wider block">
+                      CONFIDENTIAL INTEL (YOU ONLY)
+                    </span>
+                    <p className="text-white text-[11px] font-medium leading-tight">
+                      {round.secretIntelRule.intelMessage}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 4 Options Stack */}
+            <div className="flex flex-col gap-1.5 sm:gap-2">
+              {round.options.map((opt) => (
+                <OptionCard
+                  key={opt.id}
+                  id={opt.id}
+                  label={opt.label}
+                  subtitle={opt.subtitle}
+                  badgeColor={opt.badgeColor}
+                  isSelected={selectedOptionId === opt.id}
+                  onSelect={() => handleSelect(opt.id)}
+                />
+              ))}
+            </div>
+
+            {/* Privacy Pill */}
+            <div className="py-1 px-2 rounded-xl bg-[#180A2E]/80 border border-purple-500/30 flex items-center justify-center gap-1.5 text-center mt-1">
+              <Lock className="w-3 h-3 text-purple-300" />
+              <span className="text-[10px] text-gray-300 font-medium">
+                Your choice is secret. No one will see your answer (yet).
+              </span>
+            </div>
           </div>
 
-          {/* Bottom Action CTA Button (Screen 8 & 9) */}
-          <div className="w-full mt-1">
+          {/* Pinned Bottom Action CTA Button */}
+          <div className="flex-shrink-0 w-full max-w-sm mx-auto pt-1 pb-1 z-20">
             {selectedOptionId ? (
               <button
                 onClick={handleLock}
-                className="w-full py-3 sm:py-3.5 rounded-2xl bg-gradient-to-r from-[#FF0038] via-[#E1002E] to-[#B30022] text-white font-display font-black text-sm sm:text-base uppercase tracking-wider shadow-[0_6px_24px_rgba(255,0,56,0.6)] border-2 border-red-400/60 flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer"
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#FF0038] via-[#E1002E] to-[#B30022] text-white font-display font-black text-sm sm:text-base uppercase tracking-wider shadow-[0_6px_24px_rgba(255,0,56,0.6)] border-2 border-red-400/60 flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer"
               >
                 <Lock className="w-4 h-4 fill-white text-white" />
                 <span>LOCK MY ANSWER</span>
@@ -167,18 +171,18 @@ export const InitialVoteScreen: React.FC<InitialVoteScreenProps> = ({
             ) : (
               <button
                 disabled
-                className="w-full py-3 sm:py-3.5 rounded-2xl bg-[#1C0E33] border border-purple-900/40 text-gray-500 font-display font-black text-xs uppercase tracking-wider cursor-not-allowed"
+                className="w-full py-3.5 rounded-2xl bg-[#1C0E33] border border-purple-900/40 text-gray-500 font-display font-black text-xs uppercase tracking-wider cursor-not-allowed"
               >
                 SELECT AN OPTION TO CONTINUE
               </button>
             )}
           </div>
-        </div>
+        </>
       )}
 
       {/* VIEW B: ANSWER LOCKED WAITING STATE (Screen 10) */}
       {isLocked && (
-        <div className="flex flex-col items-center justify-center my-auto w-full max-w-sm mx-auto text-center py-2">
+        <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar flex flex-col items-center justify-center w-full max-w-sm mx-auto text-center py-2">
           {/* Glowing Radiant Padlock with Soundwave Rays (Screen 10) */}
           <div className="relative my-2 sm:my-3 flex items-center justify-center">
             {/* Outer pink soundwave rays */}
