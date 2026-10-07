@@ -302,17 +302,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <span className="text-[10px]">Store</span>
           </button>
         </div>
-
-        {/* Legal & Compliance Links */}
-        <div className="flex items-center justify-center gap-3 pt-2 text-[10px] text-gray-400 font-medium select-none">
-          <Link href="/privacy" className="hover:text-amber-300 transition-colors">
-            Privacy Policy
-          </Link>
-          <span>•</span>
-          <Link href="/terms" className="hover:text-amber-300 transition-colors">
-            Terms of Service
-          </Link>
-        </div>
       </footer>
 
       {/* Modals */}

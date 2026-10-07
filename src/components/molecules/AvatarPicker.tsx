@@ -24,7 +24,7 @@ export const AvatarPicker: React.FC<AvatarPickerProps> = ({
       <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-2">
         CHOOSE YOUR AVATAR
       </span>
-      <div className="grid grid-cols-4 gap-2.5 max-h-56 overflow-y-auto pr-1 select-none custom-scrollbar">
+      <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto pr-0.5 p-1 select-none no-scrollbar">
         {AVATAR_CATALOG.map((def) => {
           const isSelected = selectedAvatar === def.key;
           return (
@@ -33,11 +33,11 @@ export const AvatarPicker: React.FC<AvatarPickerProps> = ({
               type="button"
               onClick={() => handleSelect(def)}
               className={`
-                relative flex flex-col items-center justify-center p-2 rounded-2xl
-                transition-all duration-150 active:scale-90
+                relative flex flex-col items-center justify-center p-1.5 rounded-2xl
+                transition-all duration-150 active:scale-95
                 ${
                   isSelected
-                    ? "bg-purple-900/60 ring-2 ring-yellow-400 shadow-[0_0_16px_rgba(250,204,21,0.5)] scale-105"
+                    ? "bg-purple-900/80 border-2 border-yellow-400 shadow-[0_0_14px_rgba(250,204,21,0.5)] ring-1 ring-yellow-400/60"
                     : "bg-[#180A2E]/70 hover:bg-[#231042] border border-purple-800/40"
                 }
               `}

@@ -42,6 +42,7 @@ import { RoundReceiptsSummary } from "@/core/types/influence.types";
 
 import { HalftimeScreen } from "@/screens/HalftimeScreen";
 import { AnalyticsService } from "@/services/analytics/analytics.service";
+import { SplashScreen } from "@/components/organisms/SplashScreen";
 
 type ViewState =
   | "home"
@@ -55,6 +56,7 @@ type ViewState =
   | "chaos_report";
 
 export default function ChaosMainApp() {
+  const [showSplash, setShowSplash] = useState<boolean>(true);
   const [view, setView] = useState<ViewState>("home");
   const [selectedMode, setSelectedMode] = useState<GameMode>("party");
   const [selectedScenario, setSelectedScenario] = useState<ScenarioDefinition>(
@@ -103,6 +105,11 @@ export default function ChaosMainApp() {
 
   // Initialize profile & detect URL join query (?join=ABCD) & restore live sessions
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const seen = sessionStorage.getItem("chaos_splash_seen");
+      if (seen) setShowSplash(false);
+    }
+
     const profile = PlayerStorage.getProfile();
     setCurrentPlayer({
       id: "local_player",
@@ -1034,6 +1041,18 @@ export default function ChaosMainApp() {
 
       {/* Main Game Screen Canvas */}
       <div className="relative h-[100dvh] max-h-[100dvh] w-full max-w-[440px] bg-[#080210] shadow-[0_0_60px_rgba(0,0,0,0.9),0_0_20px_rgba(168,85,247,0.2)] flex flex-col justify-between overflow-hidden">
+        {/* Intro Splash Screen */}
+        {showSplash && (
+          <SplashScreen
+            onComplete={() => {
+              setShowSplash(false);
+              if (typeof window !== "undefined") {
+                sessionStorage.setItem("chaos_splash_seen", "true");
+              }
+            }}
+          />
+        )}
+
         {/* Global Floating Reactions & Buzzer Alerts Overlay */}
         <LiveReactionOverlay
           floatingEmojis={floatingEmojis}

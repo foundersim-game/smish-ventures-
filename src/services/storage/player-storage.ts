@@ -165,4 +165,33 @@ export class PlayerStorage {
       unlockedPacks: updatedPacks,
     });
   }
+
+  public static getAccount(): { email: string; isLoggedIn: boolean; createdAt: number } | null {
+    if (typeof window === "undefined") return null;
+    try {
+      const data = localStorage.getItem("chaos_user_account");
+      if (data) return JSON.parse(data);
+    } catch {
+      // Ignore
+    }
+    return null;
+  }
+
+  public static saveAccount(account: { email: string; isLoggedIn: boolean; createdAt: number }): void {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem("chaos_user_account", JSON.stringify(account));
+    } catch {
+      // Ignore
+    }
+  }
+
+  public static logoutAccount(): void {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.removeItem("chaos_user_account");
+    } catch {
+      // Ignore
+    }
+  }
 }

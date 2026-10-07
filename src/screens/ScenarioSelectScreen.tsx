@@ -3,7 +3,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
-  Crown,
   Heart,
   Layers,
   Sparkles,
@@ -14,8 +13,6 @@ import { ScenarioDefinition } from "../core/types/scenario.types";
 import { GameMode } from "../core/types/room.types";
 import { ScenarioRegistry } from "../backend/data/scenarios";
 import { ChaosButton } from "../components/atoms/ChaosButton";
-import { HostPassModal } from "../components/organisms/HostPassModal";
-import { PlayerStorage } from "../services/storage/player-storage";
 import { audio } from "../services/audio/audio-manager";
 import { haptics } from "../services/haptics/haptics-manager";
 
@@ -54,41 +51,34 @@ export const ScenarioSelectScreen: React.FC<ScenarioSelectScreenProps> = ({
   const isCouples = mode === "couples";
   const defaultScenario = ScenarioRegistry.getDefaultScenarioForMode(mode);
 
-  const [activeTab, setActiveTab] = useState<"free" | "premium">("free");
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>(defaultScenario.id);
   const [previewScenario, setPreviewScenario] = useState<ScenarioDefinition | null>(null);
-  const [showHostPassModal, setShowHostPassModal] = useState<boolean>(false);
 
-  // Scenarios strictly filtered by mode (couples vs party) and tier (free vs premium)
-  const scenarios = ScenarioRegistry.getScenariosForMode(mode, activeTab);
+  // All scenarios for the selected mode (all free & unlocked)
+  const scenarios = ScenarioRegistry.getScenariosForMode(mode);
 
-  // Sync selection if active tab changes and current selection is not in list
   const currentSelected =
     scenarios.find((s) => s.id === selectedScenarioId) ||
     scenarios[0] ||
     defaultScenario;
 
-  const handleTabChange = (tab: "free" | "premium") => {
-    setActiveTab(tab);
-    const tabScenarios = ScenarioRegistry.getScenariosForMode(mode, tab);
-    if (tabScenarios.length > 0) {
-      setSelectedScenarioId(tabScenarios[0].id);
-    }
+  const handleScenarioClick = (sc: ScenarioDefinition) => {
+    setSelectedScenarioId(sc.id);
     audio.play("click");
     haptics.trigger("light");
   };
 
-  const handleScenarioClick = (sc: ScenarioDefinition) => {
+  const handleOpenPreview = (sc: ScenarioDefinition) => {
     setSelectedScenarioId(sc.id);
     setPreviewScenario(sc);
     audio.play("click");
-    haptics.trigger("light");
+    haptics.trigger("medium");
   };
 
   return (
     <div className="relative h-full max-h-[100dvh] w-full flex flex-col justify-between px-3.5 py-1.5 sm:py-2.5 bg-[#090310] select-none overflow-hidden">
       {/* Top Navigation */}
-      <header className="relative w-full max-w-sm mx-auto flex items-center justify-between z-10 flex-shrink-0">
+      <header className="relative w-full max-w-sm mx-auto flex items-center justify-between z-10 flex-shrink-0 pt-0.5">
         <button
           onClick={previewScenario ? () => setPreviewScenario(null) : onBack}
           className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-gray-200 active:scale-95 transition-transform"
@@ -117,13 +107,13 @@ export const ScenarioSelectScreen: React.FC<ScenarioSelectScreenProps> = ({
         </span>
       </header>
 
-      {/* VIEW A: LIST VIEW (Screen 3) */}
+      {/* VIEW A: LIST VIEW (Step 2/4) */}
       {!previewScenario && (
-        <div className="flex flex-col flex-1 min-h-0 mt-2 overflow-hidden">
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden w-full max-w-sm mx-auto justify-between mt-1">
           {/* Header Title Section */}
-          <div className="text-center mb-5">
+          <div className="text-center mb-2 flex-shrink-0">
             <div
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-display font-black uppercase tracking-widest mb-1 ${
+              className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-display font-black uppercase tracking-widest mb-1 ${
                 isCouples
                   ? "bg-pink-500/20 border border-pink-500/40 text-pink-300 shadow-[0_0_12px_rgba(236,72,153,0.3)]"
                   : "bg-amber-500/20 border border-amber-500/40 text-amber-300"
@@ -131,61 +121,32 @@ export const ScenarioSelectScreen: React.FC<ScenarioSelectScreenProps> = ({
             >
               {isCouples ? (
                 <>
-                  <Heart className="w-3.5 h-3.5 fill-pink-400 text-pink-400" />
+                  <Heart className="w-3 h-3 fill-pink-400 text-pink-400" />
                   <span>COUPLES MODE</span>
                 </>
               ) : (
                 <>
-                  <Users className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                  <Users className="w-3 h-3 fill-amber-400 text-amber-400" />
                   <span>PARTY MODE</span>
                 </>
               )}
             </div>
 
-            <h1 className="font-display font-black text-3xl text-white tracking-tight leading-none mt-1">
-              CHOOSE YOUR <br />
+            <h1 className="font-display font-black text-2xl sm:text-3xl text-white tracking-tight leading-none">
+              CHOOSE YOUR{" "}
               <span className={isCouples ? "text-pink-400 drop-shadow-[0_0_16px_rgba(236,72,153,0.5)]" : "text-yellow-400"}>
-                {isCouples ? "COUPLES CHAOS" : "CHAOS"}
+                CHAOS
               </span>
             </h1>
-            <p className="text-gray-300 text-xs mt-1.5 max-w-xs mx-auto">
+            <p className="text-gray-300 text-[11px] mt-1 max-w-xs mx-auto leading-tight">
               {isCouples
                 ? "Designed exclusively for 2 players. Playful arguments & surprises."
-                : "Pick a game to see what's inside. 4 – 10 players."}
+                : `Tap a deck to preview details. ${scenarios.length} scenarios included.`}
             </p>
           </div>
 
-          {/* Tab Selector: FREE vs PREMIUM */}
-          <div className="flex p-1 rounded-2xl bg-purple-950/60 border border-purple-800/40 mb-4 max-w-sm mx-auto w-full">
-            <button
-              onClick={() => handleTabChange("free")}
-              className={`flex-1 py-2.5 rounded-xl font-display font-extrabold text-xs uppercase tracking-wider transition-all ${
-                activeTab === "free"
-                  ? isCouples
-                    ? "bg-gradient-to-r from-pink-600 to-rose-600 text-white shadow-md shadow-pink-900/40"
-                    : "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-900/40"
-                  : "text-gray-400 hover:text-white"
-              }`}
-            >
-              FREE ({ScenarioRegistry.getScenariosForMode(mode, "free").length})
-            </button>
-            <button
-              onClick={() => handleTabChange("premium")}
-              className={`flex-1 py-2.5 rounded-xl font-display font-extrabold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all ${
-                activeTab === "premium"
-                  ? isCouples
-                    ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md shadow-purple-900/40"
-                    : "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-900/40"
-                  : "text-gray-400 hover:text-white"
-              }`}
-            >
-              <Crown className="w-3.5 h-3.5 text-yellow-300" />
-              <span>PREMIUM ({ScenarioRegistry.getScenariosForMode(mode, "premium").length})</span>
-            </button>
-          </div>
-
-          {/* Scenario List */}
-          <div className="flex flex-col gap-3.5 overflow-y-auto max-w-sm mx-auto w-full flex-1 pt-1 pb-6 px-1">
+          {/* Scenario List (Scrollable, perfectly contained within viewport) */}
+          <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar flex flex-col gap-2.5 py-1 px-1">
             {scenarios.map((sc) => {
               const isSelected = sc.id === (currentSelected?.id || selectedScenarioId);
 
@@ -194,21 +155,21 @@ export const ScenarioSelectScreen: React.FC<ScenarioSelectScreenProps> = ({
                   key={sc.id}
                   onClick={() => handleScenarioClick(sc)}
                   className={`
-                    p-4 rounded-3xl flex flex-col justify-between cursor-pointer transition-all duration-200 border relative
+                    p-3 sm:p-3.5 rounded-2xl flex flex-col justify-between cursor-pointer transition-all duration-150 relative border
                     ${
                       isSelected
                         ? isCouples
-                          ? "bg-gradient-to-br from-[#38112D] via-[#240B22] to-[#120524] border-2 border-pink-500 shadow-[0_0_24px_rgba(236,72,153,0.45)] scale-[1.01]"
-                          : "bg-gradient-to-br from-[#2E103E] via-[#220D3D] to-[#120524] border-2 border-amber-400 shadow-[0_0_24px_rgba(251,191,36,0.45)] scale-[1.01]"
+                          ? "bg-gradient-to-br from-[#38112D] via-[#240B22] to-[#120524] border-2 border-pink-400 shadow-[0_0_16px_rgba(236,72,153,0.4)] ring-1 ring-pink-400/50"
+                          : "bg-gradient-to-br from-[#2E103E] via-[#220D3D] to-[#120524] border-2 border-yellow-400 shadow-[0_0_16px_rgba(251,191,36,0.4)] ring-1 ring-yellow-400/50"
                         : "bg-[#1B0F2E]/90 border-purple-800/40 hover:bg-[#25153E]"
                     }
                   `}
                 >
-                  {/* Top Header Row: Vibe Tag & Price Tier */}
-                  <div className="flex items-center justify-between gap-2 mb-2">
+                  {/* Top Header Row: Vibe Tag & Preview Button */}
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
                     {sc.vibeTag ? (
                       <span
-                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-display font-black uppercase tracking-wider border shadow-sm ${getVibeBadgeStyle(
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-display font-black uppercase tracking-wider border shadow-sm ${getVibeBadgeStyle(
                           sc.vibeColor
                         )}`}
                       >
@@ -218,43 +179,45 @@ export const ScenarioSelectScreen: React.FC<ScenarioSelectScreenProps> = ({
                       <div />
                     )}
 
-                    {sc.isPremium && (
-                      <span className="px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[10px] font-bold border border-amber-400/30 flex items-center gap-1">
-                        <Crown className="w-2.5 h-2.5 text-yellow-300" />
-                        <span>{sc.priceTier || "$2.99"}</span>
-                      </span>
-                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenPreview(sc);
+                      }}
+                      className="text-[10px] text-purple-300 hover:text-white font-bold flex items-center gap-0.5 bg-purple-900/50 px-2 py-0.5 rounded-lg border border-purple-700/40"
+                    >
+                      <span>Preview</span>
+                      <ChevronRight className="w-3 h-3" />
+                    </button>
                   </div>
 
                   <div className="flex items-start justify-between">
-                    <div className="pr-2">
-                      <h4 className="font-display font-black text-xl text-white tracking-tight flex items-center gap-2">
-                        <span>{sc.title}</span>
+                    <div className="pr-1">
+                      <h4 className="font-display font-black text-base sm:text-lg text-white tracking-tight leading-snug">
+                        {sc.title}
                       </h4>
-                      <p className="text-gray-300 text-xs mt-1 leading-snug">
+                      <p className="text-gray-300 text-[11px] mt-0.5 leading-snug line-clamp-2">
                         {sc.tagline}
                       </p>
                     </div>
-
-                    <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0 mt-1" />
                   </div>
 
                   {/* Metadata Chips */}
-                  <div className="flex items-center gap-2 mt-3 pt-2 border-t border-purple-900/40 text-[11px] text-gray-300 font-semibold">
-                    <span className="flex items-center gap-1 bg-purple-950/60 px-2 py-1 rounded-lg">
+                  <div className="flex items-center gap-2 mt-2 pt-2 border-t border-purple-900/40 text-[10px] text-gray-300 font-semibold">
+                    <span className="flex items-center gap-1 bg-purple-950/70 px-2 py-0.5 rounded-md">
                       {isCouples ? (
-                        <Heart className="w-3.5 h-3.5 fill-pink-400 text-pink-400" />
+                        <Heart className="w-3 h-3 fill-pink-400 text-pink-400" />
                       ) : (
-                        <Users className="w-3.5 h-3.5 text-purple-400" />
+                        <Users className="w-3 h-3 text-purple-400" />
                       )}
                       {sc.recommendedPlayers}
                     </span>
-                    <span className="flex items-center gap-1 bg-purple-950/60 px-2 py-1 rounded-lg">
-                      <Clock className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="flex items-center gap-1 bg-purple-950/70 px-2 py-0.5 rounded-md">
+                      <Clock className="w-3 h-3 text-amber-400" />
                       {sc.estimatedMinutes}
                     </span>
-                    <span className="flex items-center gap-1 bg-purple-950/60 px-2 py-1 rounded-lg">
-                      <Layers className="w-3.5 h-3.5 text-pink-400" />
+                    <span className="flex items-center gap-1 bg-purple-950/70 px-2 py-0.5 rounded-md">
+                      <Layers className="w-3 h-3 text-pink-400" />
                       {sc.totalRounds >= 10 ? "Up to 10 rounds" : `${sc.totalRounds} rounds`}
                     </span>
                   </div>
@@ -263,12 +226,13 @@ export const ScenarioSelectScreen: React.FC<ScenarioSelectScreenProps> = ({
             })}
           </div>
 
-          <div className="w-full max-w-sm mx-auto mt-2">
+          {/* ALWAYS PINNED Bottom Continue Button */}
+          <div className="w-full pt-2 pb-0.5 flex-shrink-0 z-20">
             <ChaosButton
               variant="primary"
               size="lg"
               rightIcon={<ChevronRight className="w-5 h-5 text-white/90" />}
-              onClick={() => setPreviewScenario(currentSelected)}
+              onClick={() => handleOpenPreview(currentSelected)}
             >
               CONTINUE
             </ChaosButton>
@@ -276,173 +240,138 @@ export const ScenarioSelectScreen: React.FC<ScenarioSelectScreenProps> = ({
         </div>
       )}
 
-      {/* VIEW B: WHAT'S INSIDE PREVIEW (Screen 5) */}
+      {/* VIEW B: WHAT'S INSIDE PREVIEW (Step 3/4) */}
       {previewScenario && (
-        <div className="flex flex-col flex-1 mt-4 max-w-sm mx-auto w-full">
-          {/* Hero Banner Card */}
-          <div
-            className={`p-4 rounded-3xl bg-gradient-to-b ${
-              isCouples
-                ? "from-[#3D1231] to-[#1E0824] border-2 border-pink-500/50 shadow-[0_0_24px_rgba(236,72,153,0.25)]"
-                : "from-[#3A144E] to-[#1E082E] border-2 border-purple-500/50 shadow-xl"
-            } mb-4 relative overflow-hidden`}
-          >
-            <div className="flex items-center gap-2 flex-wrap mb-2">
-              {previewScenario.isPremium ? (
-                <span className="px-2.5 py-0.5 rounded-full bg-purple-500/30 text-purple-300 text-[10px] font-extrabold uppercase tracking-wider border border-purple-400/40 inline-flex items-center gap-1">
-                  <Crown className="w-3 h-3 text-yellow-300" />
-                  {previewScenario.priceTier || "$2.99"} PREMIUM PACK
-                </span>
-              ) : (
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/30 text-emerald-300 text-[10px] font-extrabold uppercase tracking-wider border border-emerald-400/40">
-                  FREE PACK
-                </span>
-              )}
-
-              {previewScenario.vibeTag && (
-                <span
-                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-display font-black uppercase tracking-wider border shadow-sm ${getVibeBadgeStyle(
-                    previewScenario.vibeColor
-                  )}`}
-                >
-                  <span>{previewScenario.vibeTag}</span>
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between mt-2">
-              <h2 className="font-display font-black text-2xl text-white tracking-tight">
-                {previewScenario.title}
-              </h2>
-              {isCouples ? (
-                <Heart className="w-9 h-9 fill-pink-500 text-pink-400 flex-shrink-0 animate-pulse" />
-              ) : (
-                <Zap className="w-9 h-9 fill-yellow-400 text-yellow-300 flex-shrink-0 animate-pulse" />
-              )}
-            </div>
-
-            <p className="text-gray-300 text-xs mt-1 leading-snug">
-              {previewScenario.tagline}
-            </p>
-
-            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-purple-800/50 text-[11px] text-gray-200 font-bold">
-              <span className="bg-purple-900/60 px-2.5 py-1 rounded-lg flex items-center gap-1">
-                {isCouples ? (
-                  <Heart className="w-3.5 h-3.5 fill-pink-400 text-pink-300" />
-                ) : (
-                  <Users className="w-3.5 h-3.5 text-purple-300" />
-                )}
-                {previewScenario.recommendedPlayers}
-              </span>
-              <span className="bg-purple-900/60 px-2.5 py-1 rounded-lg flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-amber-300" />
-                {previewScenario.estimatedMinutes}
-              </span>
-              <span className="bg-purple-900/60 px-2.5 py-1 rounded-lg flex items-center gap-1">
-                <Layers className="w-3.5 h-3.5 text-pink-300" />
-                {previewScenario.totalRounds >= 10 ? "Up to 10 rounds" : `${previewScenario.totalRounds} rounds`}
-              </span>
-            </div>
-          </div>
-
-          {/* Section: WHAT'S INSIDE? */}
-          <div className="mb-2">
-            <h3
-              className={`font-display font-black text-xl tracking-tight ${
-                isCouples ? "text-pink-400" : "text-yellow-400"
-              }`}
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden w-full max-w-sm mx-auto justify-between mt-1">
+          {/* Scrollable Preview Content */}
+          <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar flex flex-col gap-2.5 py-1 px-1">
+            {/* Hero Banner Card */}
+            <div
+              className={`p-3.5 sm:p-4 rounded-2xl bg-gradient-to-b ${
+                isCouples
+                  ? "from-[#3D1231] to-[#1E0824] border-2 border-pink-500/50 shadow-[0_0_20px_rgba(236,72,153,0.25)]"
+                  : "from-[#3A144E] to-[#1E082E] border-2 border-purple-500/50 shadow-xl"
+              } relative overflow-hidden`}
             >
-              WHAT'S INSIDE?
-            </h3>
-            <p className="text-gray-300 text-xs">
-              {isCouples
-                ? "4 escalating dilemmas testing partner instincts, predictions & alignment."
-                : "A mix of questions, decisions and consequences that get progressively crazier."}
-            </p>
-          </div>
+              <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                {previewScenario.vibeTag && (
+                  <span
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-display font-black uppercase tracking-wider border shadow-sm ${getVibeBadgeStyle(
+                      previewScenario.vibeColor
+                    )}`}
+                  >
+                    <span>{previewScenario.vibeTag}</span>
+                  </span>
+                )}
+              </div>
 
-          {/* 6 Feature Grid Cards (2x3) */}
-          <div className="grid grid-cols-3 gap-2 mb-4">
-            {previewScenario.features.map((feat, idx) => (
-              <div
-                key={idx}
-                className="p-2.5 rounded-2xl bg-[#1C1033] border border-purple-800/40 flex flex-col items-center text-center justify-center min-h-[75px]"
-              >
-                <Sparkles
-                  className={`w-4 h-4 mb-1 ${
-                    isCouples ? "text-pink-400" : "text-amber-400"
-                  }`}
-                />
-                <span className="text-[11px] text-gray-200 font-bold leading-tight">
-                  {feat}
+              <div className="flex items-start justify-between mt-1">
+                <h2 className="font-display font-black text-xl sm:text-2xl text-white tracking-tight leading-tight">
+                  {previewScenario.title}
+                </h2>
+                {isCouples ? (
+                  <Heart className="w-7 h-7 fill-pink-500 text-pink-400 flex-shrink-0 animate-pulse ml-2" />
+                ) : (
+                  <Zap className="w-7 h-7 fill-yellow-400 text-yellow-300 flex-shrink-0 animate-pulse ml-2" />
+                )}
+              </div>
+
+              <p className="text-gray-300 text-xs mt-1.5 leading-snug">
+                {previewScenario.tagline}
+              </p>
+
+              <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-purple-800/50 text-[11px] text-gray-200 font-bold">
+                <span className="bg-purple-900/60 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                  {isCouples ? (
+                    <Heart className="w-3.5 h-3.5 fill-pink-400 text-pink-300" />
+                  ) : (
+                    <Users className="w-3.5 h-3.5 text-purple-300" />
+                  )}
+                  {previewScenario.recommendedPlayers}
+                </span>
+                <span className="bg-purple-900/60 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-amber-300" />
+                  {previewScenario.estimatedMinutes}
+                </span>
+                <span className="bg-purple-900/60 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                  <Layers className="w-3.5 h-3.5 text-pink-300" />
+                  {previewScenario.totalRounds >= 10 ? "Up to 10 rounds" : `${previewScenario.totalRounds} rounds`}
                 </span>
               </div>
-            ))}
-          </div>
+            </div>
 
-          {/* Good For Card */}
-          <div className="p-3 rounded-2xl bg-purple-950/60 border border-purple-800/40 mb-4 flex items-start gap-2.5">
-            <span className="text-xl">{isCouples ? "💖" : "💡"}</span>
-            <div>
-              <span
-                className={`text-[10px] font-bold uppercase tracking-wider ${
-                  isCouples ? "text-pink-300" : "text-purple-300"
+            {/* Section: WHAT'S INSIDE? */}
+            <div className="px-1">
+              <h3
+                className={`font-display font-black text-lg tracking-tight ${
+                  isCouples ? "text-pink-400" : "text-yellow-400"
                 }`}
               >
-                GOOD FOR
-              </span>
-              <p className="text-gray-300 text-xs mt-0.5 leading-snug">
-                {previewScenario.goodFor}
+                WHAT'S INSIDE?
+              </h3>
+              <p className="text-gray-300 text-[11px] leading-tight">
+                {isCouples
+                  ? "Escalating dilemmas testing partner instincts, predictions & alignment."
+                  : "A mix of questions, decisions and consequences that get progressively crazier."}
               </p>
+            </div>
+
+            {/* 6 Feature Grid Cards (2x3) */}
+            <div className="grid grid-cols-3 gap-2">
+              {previewScenario.features.map((feat, idx) => (
+                <div
+                  key={idx}
+                  className="p-2 rounded-xl bg-[#1C1033] border border-purple-800/40 flex flex-col items-center text-center justify-center min-h-[64px]"
+                >
+                  <Sparkles
+                    className={`w-3.5 h-3.5 mb-1 ${
+                      isCouples ? "text-pink-400" : "text-amber-400"
+                    }`}
+                  />
+                  <span className="text-[10px] text-gray-200 font-bold leading-tight">
+                    {feat}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Good For Card */}
+            <div className="p-2.5 rounded-xl bg-purple-950/60 border border-purple-800/40 flex items-start gap-2">
+              <span className="text-lg leading-none">{isCouples ? "💖" : "💡"}</span>
+              <div>
+                <span
+                  className={`text-[9px] font-bold uppercase tracking-wider block ${
+                    isCouples ? "text-pink-300" : "text-purple-300"
+                  }`}
+                >
+                  GOOD FOR
+                </span>
+                <p className="text-gray-300 text-[11px] mt-0.5 leading-snug">
+                  {previewScenario.goodFor}
+                </p>
+              </div>
             </div>
           </div>
 
-          {/* Select CTA */}
-          <ChaosButton
-            variant="primary"
-            size="lg"
-            icon={
-              previewScenario.isPremium ? (
-                <Crown className="w-5 h-5 fill-yellow-300 text-yellow-200" />
-              ) : isCouples ? (
-                <Heart className="w-5 h-5 fill-white text-white" />
-              ) : undefined
-            }
-            rightIcon={<ChevronRight className="w-5 h-5 text-white/90" />}
-            onClick={() => {
-              if (previewScenario.isPremium) {
-                const pass = PlayerStorage.getHostPass();
-                const isUnlocked = pass.hasPass || pass.unlockedPacks.includes(previewScenario.id);
-                if (!isUnlocked) {
-                  setShowHostPassModal(true);
-                  return;
-                }
+          {/* ALWAYS PINNED Bottom Select CTA */}
+          <div className="w-full pt-2 pb-0.5 flex-shrink-0 z-20">
+            <ChaosButton
+              variant="primary"
+              size="lg"
+              icon={
+                isCouples ? (
+                  <Heart className="w-5 h-5 fill-white text-white" />
+                ) : (
+                  <Zap className="w-5 h-5 fill-white text-white" />
+                )
               }
-              onSelectScenario(previewScenario);
-            }}
-          >
-            {previewScenario.isPremium
-              ? `PLAY THIS PACK (${previewScenario.priceTier || "$2.99"})`
-              : "SELECT THIS CHAOS"}
-          </ChaosButton>
+              rightIcon={<ChevronRight className="w-5 h-5 text-white/90" />}
+              onClick={() => onSelectScenario(previewScenario)}
+            >
+              START THIS CHAOS
+            </ChaosButton>
+          </div>
         </div>
-      )}
-
-      {/* Host Pass / Monetization & Viral Share Modal */}
-      {previewScenario && (
-        <HostPassModal
-          isOpen={showHostPassModal}
-          packTitle={previewScenario.title}
-          onClose={() => setShowHostPassModal(false)}
-          onPassActivated={(product) => {
-            if (product === "shared") {
-              PlayerStorage.activatePass("shared_viral", 1, previewScenario.id);
-            } else {
-              PlayerStorage.activatePass(product.id, product.hostedGamesCount, previewScenario.id);
-            }
-            onSelectScenario(previewScenario);
-          }}
-        />
       )}
     </div>
   );
