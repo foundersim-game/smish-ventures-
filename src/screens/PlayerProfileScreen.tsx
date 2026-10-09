@@ -486,14 +486,20 @@ export const PlayerProfileScreen: React.FC<PlayerProfileScreenProps> = ({
                     </div>
 
                     <div className="relative">
-                      <KeyRound className="w-4 h-4 text-yellow-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <KeyRound className="w-4 h-4 text-yellow-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                       <input
                         type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         maxLength={6}
                         value={otpCode}
                         onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                        placeholder="Enter 6-digit code (e.g. 123456)"
-                        className="w-full bg-[#0E051D] border-2 border-yellow-500/50 focus:border-yellow-400 rounded-xl pl-9 pr-3 py-2.5 text-yellow-300 font-mono font-black text-sm tracking-widest outline-none text-center"
+                        placeholder="Enter 6-digit code"
+                        className={`w-full bg-[#0E051D] border-2 border-yellow-500/50 focus:border-yellow-400 rounded-xl pl-9 pr-3 py-2.5 text-yellow-300 outline-none text-center transition-all placeholder:font-sans placeholder:tracking-normal placeholder:font-medium placeholder:text-gray-400 placeholder:text-xs ${
+                          otpCode
+                            ? "font-mono font-black text-base tracking-[0.35em]"
+                            : "font-sans font-medium text-xs tracking-normal"
+                        }`}
                       />
                     </div>
 

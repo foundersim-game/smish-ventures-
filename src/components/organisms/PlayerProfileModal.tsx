@@ -424,14 +424,20 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
                       </div>
 
                       <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-purple-950/70 border border-yellow-500/50">
-                        <KeyRound className="w-4 h-4 text-yellow-400" />
+                        <KeyRound className="w-4 h-4 text-yellow-400 flex-shrink-0" />
                         <input
                           type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
                           maxLength={6}
                           value={otpCode}
                           onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                          placeholder="6-digit code"
-                          className="w-full bg-transparent text-yellow-300 font-mono font-bold text-sm tracking-widest outline-none text-center"
+                          placeholder="Enter 6-digit code"
+                          className={`w-full bg-transparent text-yellow-300 outline-none text-center transition-all placeholder:font-sans placeholder:tracking-normal placeholder:font-medium placeholder:text-gray-400 placeholder:text-xs ${
+                            otpCode
+                              ? "font-mono font-black text-sm tracking-[0.3em]"
+                              : "font-sans font-medium text-xs tracking-normal"
+                          }`}
                         />
                       </div>
 
