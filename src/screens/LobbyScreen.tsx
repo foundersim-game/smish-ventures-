@@ -14,12 +14,14 @@ import {
   UserPlus,
   Crown,
   Sparkles,
+  QrCode,
 } from "lucide-react";
 import { PlayerSession } from "../core/types/player.types";
 import { RoomSession } from "../core/types/room.types";
 import { AvatarBadge } from "../components/atoms/AvatarBadge";
 import { ChaosButton } from "../components/atoms/ChaosButton";
 import { HostPassModal } from "../components/organisms/HostPassModal";
+import { LobbyQrModal } from "../components/molecules/LobbyQrModal";
 import { PlayerStorage } from "../services/storage/player-storage";
 import { audio } from "../services/audio/audio-manager";
 import { haptics } from "../services/haptics/haptics-manager";
@@ -52,6 +54,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
   const [copied, setCopied] = useState(false);
   const [loadingBot, setLoadingBot] = useState(false);
   const [showHostPass, setShowHostPass] = useState(false);
+  const [showQr, setShowQr] = useState(false);
 
   // Resilient player roster: guarantee current player is always visible even during initial fetch
   const effectivePlayers = React.useMemo(() => {
@@ -186,6 +189,16 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
                 className="p-1 rounded-lg bg-purple-900/60 text-purple-300 hover:text-white"
               >
                 {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+              </button>
+              <button
+                onClick={() => {
+                  audio.play("click");
+                  setShowQr(true);
+                }}
+                title="Scan QR Code"
+                className="p-1 rounded-lg bg-purple-900/60 text-yellow-400 hover:text-yellow-300 border border-yellow-500/30"
+              >
+                <QrCode className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -350,6 +363,13 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
             }
             onActivatePass?.();
           }}
+        />
+
+        <LobbyQrModal
+          isOpen={showQr}
+          onClose={() => setShowQr(false)}
+          roomCode={room.roomCode}
+          joinUrl={getJoinUrl()}
         />
       </div>
     </div>

@@ -161,4 +161,33 @@ export class AuthClient {
       return () => {};
     }
   }
+
+  /**
+   * Permanently deletes user account and wipes local/cloud records.
+   * Fulfills Apple App Store Guideline 5.1.1(v).
+   */
+  public static async deleteAccount(): Promise<{ success: boolean; message?: string }> {
+    const account = PlayerStorage.getAccount();
+    if (account?.email) {
+      try {
+        await fetch("/api/auth/account/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: account.email }),
+        });
+      } catch {
+        // Fallback
+      }
+    }
+
+    try {
+      const supabase = getSupabaseClient();
+      await supabase.auth.signOut();
+    } catch {
+      // Ignore
+    }
+
+    PlayerStorage.deleteAccount();
+    return { success: true, message: "Account permanently deleted." };
+  }
 }

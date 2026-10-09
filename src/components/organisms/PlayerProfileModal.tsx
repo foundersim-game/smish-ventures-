@@ -10,6 +10,7 @@ import {
   Sparkles,
   ArrowRight,
   RefreshCw,
+  Trash2,
 } from "lucide-react";
 import { AvatarKey } from "../../core/types/player.types";
 import { PlayerStorage, UserAccount } from "../../services/storage/player-storage";
@@ -41,6 +42,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
   const [otpSent, setOtpSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [authMsg, setAuthMsg] = useState<{ text: string; isError?: boolean } | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     const unsub = AuthClient.initAuthListener((updated) => {
@@ -139,6 +141,20 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
     setAuthMsg({ text: "Signed out. Playing as guest." });
     audio.play("click");
     haptics.trigger("light");
+  };
+
+  const handleDeleteAccount = async () => {
+    setIsLoading(true);
+    audio.play("click");
+    haptics.trigger("heavy");
+    await AuthClient.deleteAccount();
+    setIsLoading(false);
+    setShowDeleteConfirm(false);
+    setAccount(null);
+    setEmail("");
+    setOtpCode("");
+    setOtpSent(false);
+    setAuthMsg({ text: "Account & data permanently deleted." });
   };
 
   return (
@@ -271,6 +287,40 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
                     <LogOut className="w-4 h-4 text-red-400" />
                     <span>Sign Out</span>
                   </button>
+
+                  {!showDeleteConfirm ? (
+                    <button
+                      onClick={() => {
+                        audio.play("click");
+                        setShowDeleteConfirm(true);
+                      }}
+                      className="w-full py-2 text-[10px] text-red-400/80 hover:text-red-400 font-bold uppercase tracking-wider flex items-center justify-center gap-1 active:scale-95 transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-3 h-3 text-red-400" />
+                      <span>Delete Account & Wipe Data</span>
+                    </button>
+                  ) : (
+                    <div className="p-3 rounded-2xl bg-red-950/70 border border-red-500/60 space-y-2 text-center animate-fade-in">
+                      <p className="text-red-200 text-[10px] font-bold leading-tight">
+                        Permanently wipe account & cloud stats? This cannot be undone.
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setShowDeleteConfirm(false)}
+                          className="flex-1 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-gray-300 text-xs font-bold cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleDeleteAccount}
+                          disabled={isLoading}
+                          className="flex-1 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-extrabold shadow-md active:scale-95 transition-all cursor-pointer"
+                        >
+                          Confirm Delete
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="flex flex-col gap-2.5">

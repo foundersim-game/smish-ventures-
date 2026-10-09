@@ -221,4 +221,22 @@ export class PlayerStorage {
       // Ignore
     }
   }
+
+  /**
+   * Permanently wipes user identity, cloud tokens, and stored game data.
+   * Required for Apple Guideline 5.1.1(v).
+   */
+  public static deleteAccount(): void {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.removeItem("chaos_user_account");
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(PASS_STORAGE_KEY);
+      localStorage.removeItem(ACTIVE_SESSION_KEY);
+      localStorage.removeItem(PLAYER_ID_KEY);
+      localStorage.removeItem("chaos_device_fingerprint");
+    } catch {
+      // Ignore
+    }
+  }
 }

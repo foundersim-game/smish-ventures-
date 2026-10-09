@@ -404,8 +404,12 @@ export class GameplayService {
   public static async nextRound(roomCode: string, hostPlayerId: string): Promise<RoomSession> {
     const room = await this.repo.findByCode(roomCode);
     if (!room) throw new Error("Room not found.");
-    const player = await this.repo.getPlayer(room.id, hostPlayerId);
-    const isAuthorized = room.hostId === hostPlayerId || player?.isHost;
+    const players = await this.repo.getPlayers(room.id);
+    const player = players.find(p => p.id === hostPlayerId);
+    const hostPlayer = players.find(p => p.id === room.hostId);
+    const isHostInactive = !hostPlayer || !hostPlayer.connected || (Date.now() - (hostPlayer.lastSeenAt || 0) > 45000);
+    const oldestConnected = players.filter(p => p.connected)[0];
+    const isAuthorized = room.hostId === hostPlayerId || Boolean(player?.isHost) || (isHostInactive && oldestConnected?.id === hostPlayerId);
     if (!isAuthorized) throw new Error("Only the host can advance rounds.");
 
     const nextIndex = room.currentRoundIndex + 1;
@@ -415,7 +419,6 @@ export class GameplayService {
       const updated = GameStateMachine.transition(room, "chaos_report", 0);
       await this.repo.saveRoom(updated);
 
-      const players = await this.repo.getPlayers(room.id);
       const report = TitlesAssigner.assignTitles(room.id, players, 30000 - (room.resourceState.balance ?? 0));
 
       this.bus.publish(roomCode, "GAME_CONCLUDED", { report });
@@ -442,7 +445,6 @@ export class GameplayService {
 
     const scenario = ScenarioRegistry.getById(room.scenarioId) || ScenarioRegistry.getDefaultPartyScenario();
     const roundDef = scenario.rounds[nextIndex - 1] || scenario.rounds[0];
-    const players = await this.repo.getPlayers(room.id);
     const missions = MissionEngine.generateMissions(nextIndex, players, roundDef);
     this.currentMissions.set(room.id, missions);
 

@@ -265,8 +265,12 @@ export default function ChaosMainApp() {
             if (fresh?.room) setRoom(fresh.room);
             if (fresh?.players) setPlayers(fresh.players);
             if (fresh?.scenario) setSelectedScenario(fresh.scenario);
-            if (fresh?.resolution) setResolution(fresh.resolution);
-            if (fresh?.consequence) setConsequenceData(fresh.consequence);
+            if (fresh?.resolution && fresh.resolution.roundIndex === fresh.room.currentRoundIndex) {
+              setResolution(fresh.resolution);
+            }
+            if (fresh?.consequence && (!fresh.consequence.roundIndex || fresh.consequence.roundIndex === fresh.room.currentRoundIndex)) {
+              setConsequenceData(fresh.consequence);
+            }
           } catch {
             // Ignore background error
           }

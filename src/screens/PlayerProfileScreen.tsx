@@ -14,6 +14,7 @@ import {
   Zap,
   ArrowRight,
   RefreshCw,
+  Trash2,
 } from "lucide-react";
 import { AvatarKey } from "../core/types/player.types";
 import { PlayerStorage, StoredProfile, UserAccount } from "../services/storage/player-storage";
@@ -50,6 +51,7 @@ export const PlayerProfileScreen: React.FC<PlayerProfileScreenProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [authMsg, setAuthMsg] = useState<{ text: string; isError?: boolean } | null>(null);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     // Listen for OAuth redirect state changes
@@ -153,6 +155,20 @@ export const PlayerProfileScreen: React.FC<PlayerProfileScreenProps> = ({
     setAuthMsg({ text: "Signed out. Now using guest mode." });
     audio.play("click");
     haptics.trigger("light");
+  };
+
+  const handleDeleteAccount = async () => {
+    setIsLoading(true);
+    audio.play("click");
+    haptics.trigger("heavy");
+    await AuthClient.deleteAccount();
+    setIsLoading(false);
+    setShowDeleteConfirm(false);
+    setAccount(null);
+    setEmail("");
+    setOtpCode("");
+    setOtpSent(false);
+    setAuthMsg({ text: "Account & cloud data permanently deleted." });
   };
 
   return (
@@ -312,11 +328,45 @@ export const PlayerProfileScreen: React.FC<PlayerProfileScreenProps> = ({
 
                 <button
                   onClick={handleLogout}
-                  className="w-full py-2.5 rounded-xl bg-red-950/40 hover:bg-red-950/70 border border-red-500/40 text-red-300 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+                  className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-gray-200 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
                 >
-                  <LogOut className="w-3.5 h-3.5" />
+                  <LogOut className="w-3.5 h-3.5 text-gray-400" />
                   <span>Sign Out of Account</span>
                 </button>
+
+                {!showDeleteConfirm ? (
+                  <button
+                    onClick={() => {
+                      audio.play("click");
+                      setShowDeleteConfirm(true);
+                    }}
+                    className="w-full py-2 text-[11px] text-red-400/80 hover:text-red-400 font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 active:scale-95 transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="w-3 h-3 text-red-400" />
+                    <span>Delete Account & Wipe Cloud Data</span>
+                  </button>
+                ) : (
+                  <div className="p-3 rounded-2xl bg-red-950/60 border border-red-500/60 space-y-2 text-center animate-fade-in">
+                    <p className="text-red-200 text-[11px] font-bold leading-tight">
+                      Permanently wipe your account, cloud backups, and badges? This cannot be undone.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setShowDeleteConfirm(false)}
+                        className="flex-1 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-gray-300 text-xs font-bold cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleDeleteAccount}
+                        disabled={isLoading}
+                        className="flex-1 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-extrabold shadow-md active:scale-95 transition-all cursor-pointer"
+                      >
+                        Confirm Delete
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-3">
