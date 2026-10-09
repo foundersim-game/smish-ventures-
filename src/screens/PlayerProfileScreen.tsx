@@ -15,8 +15,11 @@ import {
   ArrowRight,
   RefreshCw,
   Trash2,
+  Crown,
+  Gamepad2,
 } from "lucide-react";
 import { AvatarKey } from "../core/types/player.types";
+import { AVATAR_CATALOG } from "../core/constants/avatars";
 import { PlayerStorage, StoredProfile, UserAccount } from "../services/storage/player-storage";
 import { AvatarPicker } from "../components/molecules/AvatarPicker";
 import { audio } from "../services/audio/audio-manager";
@@ -42,6 +45,8 @@ export const PlayerProfileScreen: React.FC<PlayerProfileScreenProps> = ({
   const [name, setName] = useState(profile.name || "");
   const [avatar, setAvatar] = useState<AvatarKey>(profile.avatar || "crown");
   const [activeTab, setActiveTab] = useState<"profile" | "account">("profile");
+  const currentAvatarDef = AVATAR_CATALOG.find((a) => a.key === avatar) || AVATAR_CATALOG[0];
+  const passStatus = PlayerStorage.getHostPass();
 
   // Account State
   const [account, setAccount] = useState<UserAccount | null>(PlayerStorage.getAccount());
@@ -227,7 +232,7 @@ export const PlayerProfileScreen: React.FC<PlayerProfileScreenProps> = ({
                 : "text-gray-400 hover:text-white"
             }`}
           >
-            Cloud Account
+            CHAOS ID
           </button>
         </div>
 
@@ -304,79 +309,171 @@ export const PlayerProfileScreen: React.FC<PlayerProfileScreenProps> = ({
             </button>
           </>
         ) : (
-          /* Cloud Account Tab */
-          <div className="p-4 rounded-2xl bg-[#170B2C]/90 border border-purple-500/40 shadow-lg space-y-3.5">
+          <div className="space-y-3.5">
             {account?.isLoggedIn ? (
-              <div className="space-y-3">
-                <div className="p-3.5 rounded-2xl bg-emerald-950/50 border border-emerald-500/40 flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center flex-shrink-0 text-emerald-300">
-                    <ShieldCheck className="w-5 h-5" />
+              <div className="p-4 rounded-3xl bg-gradient-to-br from-[#1C0A33] via-[#140626] to-[#0D031A] border-2 border-purple-500/50 shadow-[0_0_25px_rgba(168,85,247,0.3)] space-y-4 relative overflow-hidden">
+                {/* Subtle Ambient Glows */}
+                <div className="absolute -top-12 -right-12 w-32 h-32 bg-pink-600/20 rounded-full blur-2xl pointer-events-none" />
+                <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-purple-600/20 rounded-full blur-2xl pointer-events-none" />
+
+                {/* Player Identity Header */}
+                <div className="flex items-center gap-3.5 relative z-10">
+                  <div
+                    className={`w-14 h-14 rounded-full flex items-center justify-center bg-gradient-to-tr ${currentAvatarDef.gradient} ring-2 ring-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)] flex-shrink-0`}
+                  >
+                    <span className="text-3xl filter drop-shadow">{currentAvatarDef.emoji}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <h4 className="font-bold text-white text-xs">Cloud Backup Active</h4>
-                      <span className="px-1.5 py-0.5 rounded-md bg-purple-500/20 text-purple-300 text-[9px] font-mono font-bold uppercase">
-                        {account.provider === "google" ? "⚡ Google" : account.provider === "apple" ? "🍎 Apple" : "✉️ Email OTP"}
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-display font-black text-base text-white tracking-wide truncate">
+                        {name || "CHAOS Player"}
+                      </h3>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-[9px] font-extrabold text-emerald-300 flex items-center gap-1 uppercase tracking-wider flex-shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        ACTIVE ID
                       </span>
                     </div>
-                    <p className="text-gray-300 text-xs font-mono truncate mt-0.5">{account.email}</p>
-                    <p className="text-gray-400 text-[10px] mt-1">
-                      Your unlock keys, badges, and host passes are securely tied to this identity.
-                    </p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="px-1.5 py-0.2 rounded bg-purple-900/70 border border-purple-700/60 text-[9px] font-black text-purple-300 uppercase flex-shrink-0">
+                        {account.provider === "google"
+                          ? "Google"
+                          : account.provider === "apple"
+                          ? "Apple"
+                          : "Email"}
+                      </span>
+                      <span className="text-purple-200 text-xs font-mono truncate">{account.email}</span>
+                    </div>
                   </div>
                 </div>
 
-                <button
-                  onClick={handleLogout}
-                  className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-gray-200 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
-                >
-                  <LogOut className="w-3.5 h-3.5 text-gray-400" />
-                  <span>Sign Out of Account</span>
-                </button>
-
-                {!showDeleteConfirm ? (
-                  <button
-                    onClick={() => {
-                      audio.play("click");
-                      setShowDeleteConfirm(true);
-                    }}
-                    className="w-full py-2 text-[11px] text-red-400/80 hover:text-red-400 font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 active:scale-95 transition-colors cursor-pointer"
-                  >
-                    <Trash2 className="w-3 h-3 text-red-400" />
-                    <span>Delete Account & Wipe Cloud Data</span>
-                  </button>
-                ) : (
-                  <div className="p-3 rounded-2xl bg-red-950/60 border border-red-500/60 space-y-2 text-center animate-fade-in">
-                    <p className="text-red-200 text-[11px] font-bold leading-tight">
-                      Permanently wipe your account, cloud backups, and badges? This cannot be undone.
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setShowDeleteConfirm(false)}
-                        className="flex-1 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-gray-300 text-xs font-bold cursor-pointer"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={handleDeleteAccount}
-                        disabled={isLoading}
-                        className="flex-1 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-extrabold shadow-md active:scale-95 transition-all cursor-pointer"
-                      >
-                        Confirm Delete
-                      </button>
+                {/* Linked Privileges Grid */}
+                <div className="grid grid-cols-2 gap-2 relative z-10">
+                  <div className="p-2.5 rounded-2xl bg-purple-950/60 border border-purple-800/40">
+                    <div className="flex items-center gap-1.5 text-amber-400 mb-1">
+                      <Crown className="w-3.5 h-3.5" />
+                      <span className="text-[10px] font-display font-black uppercase tracking-wider">Host Status</span>
                     </div>
+                    <div className="font-display font-black text-xs text-white">
+                      {passStatus.hasPass
+                        ? passStatus.passesRemaining === "unlimited"
+                          ? "VIP Unlimited"
+                          : `${passStatus.passesRemaining} Passes Left`
+                        : "Party Host"}
+                    </div>
+                    <span className="text-[9px] text-gray-400 block mt-0.5">Tied to this ID</span>
                   </div>
-                )}
+
+                  <div className="p-2.5 rounded-2xl bg-purple-950/60 border border-purple-800/40">
+                    <div className="flex items-center gap-1.5 text-cyan-400 mb-1">
+                      <Trophy className="w-3.5 h-3.5" />
+                      <span className="text-[10px] font-display font-black uppercase tracking-wider">Trophies</span>
+                    </div>
+                    <div className="font-display font-black text-xs text-white">
+                      Synced
+                    </div>
+                    <span className="text-[9px] text-gray-400 block mt-0.5">Career achievements</span>
+                  </div>
+
+                  <div className="p-2.5 rounded-2xl bg-purple-950/60 border border-purple-800/40">
+                    <div className="flex items-center gap-1.5 text-pink-400 mb-1">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span className="text-[10px] font-display font-black uppercase tracking-wider">Avatars</span>
+                    </div>
+                    <div className="font-display font-black text-xs text-white">
+                      {AVATAR_CATALOG.length} Presets
+                    </div>
+                    <span className="text-[9px] text-gray-400 block mt-0.5">Squad character vault</span>
+                  </div>
+
+                  <div className="p-2.5 rounded-2xl bg-purple-950/60 border border-purple-800/40">
+                    <div className="flex items-center gap-1.5 text-emerald-400 mb-1">
+                      <Zap className="w-3.5 h-3.5" />
+                      <span className="text-[10px] font-display font-black uppercase tracking-wider">Platform</span>
+                    </div>
+                    <div className="font-display font-black text-xs text-white">
+                      Cross-Play
+                    </div>
+                    <span className="text-[9px] text-gray-400 block mt-0.5">Mobile & Web</span>
+                  </div>
+                </div>
+
+                {/* Account Actions */}
+                <div className="space-y-2.5 pt-1 relative z-10">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full py-2.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 border border-purple-700/60 text-gray-200 font-display font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition-all shadow-md cursor-pointer"
+                  >
+                    <LogOut className="w-3.5 h-3.5 text-purple-300" />
+                    <span>Sign Out of CHAOS ID</span>
+                  </button>
+
+                  {!showDeleteConfirm ? (
+                    <button
+                      onClick={() => {
+                        audio.play("click");
+                        setShowDeleteConfirm(true);
+                      }}
+                      className="w-full py-1 text-[11px] text-red-400/70 hover:text-red-400 font-bold uppercase tracking-wider flex items-center justify-center gap-1 active:scale-95 transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-3 h-3 text-red-400" />
+                      <span>Delete CHAOS Account & Reset ID</span>
+                    </button>
+                  ) : (
+                    <div className="p-3 rounded-2xl bg-red-950/80 border border-red-500/60 space-y-2 text-center animate-fade-in">
+                      <p className="text-red-200 text-[11px] font-bold leading-tight">
+                        Permanently delete your CHAOS ID, linked purchases, and game trophies? This cannot be undone.
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setShowDeleteConfirm(false)}
+                          className="flex-1 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-gray-300 text-xs font-bold cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleDeleteAccount}
+                          disabled={isLoading}
+                          className="flex-1 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-extrabold shadow-md active:scale-95 transition-all cursor-pointer"
+                        >
+                          Confirm Delete
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
-              <div className="space-y-3">
-                <div>
-                  <h4 className="font-display font-black text-white text-sm">
-                    SYNC STATS & BADGES TO THE CLOUD
+              <div className="p-4 rounded-3xl bg-gradient-to-br from-[#1C0A33] via-[#140626] to-[#0D031A] border-2 border-purple-500/50 shadow-[0_0_25px_rgba(168,85,247,0.3)] space-y-3.5 relative overflow-hidden">
+                <div className="text-center space-y-1">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-purple-500/20 border border-purple-400/40 text-[10px] font-extrabold text-pink-300 uppercase tracking-wider">
+                    <Zap className="w-3 h-3 text-yellow-300" />
+                    <span>CHAOS ID</span>
+                  </div>
+                  <h4 className="font-display font-black text-base text-white tracking-wide uppercase">
+                    LINK YOUR PLAYER IDENTITY
                   </h4>
-                  <p className="text-gray-400 text-[11px] mt-0.5">
-                    Sign in to preserve your unlocks, achievements, and host privileges on any device.
+                  <p className="text-gray-300 text-xs leading-relaxed max-w-xs mx-auto">
+                    Keep your host passes, custom avatars, and squad trophies active whenever you play.
                   </p>
+                </div>
+
+                {/* 3 Game Perks */}
+                <div className="grid grid-cols-3 gap-2 py-1">
+                  <div className="p-2 rounded-xl bg-purple-950/60 border border-purple-800/40 text-center">
+                    <Crown className="w-4 h-4 text-amber-400 mx-auto mb-1" />
+                    <span className="text-[10px] font-display font-black text-white block uppercase">Host Passes</span>
+                    <span className="text-[8px] text-gray-400 block">Never lose access</span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-purple-950/60 border border-purple-800/40 text-center">
+                    <Trophy className="w-4 h-4 text-cyan-400 mx-auto mb-1" />
+                    <span className="text-[10px] font-display font-black text-white block uppercase">Trophies</span>
+                    <span className="text-[8px] text-gray-400 block">Squad badges</span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-purple-950/60 border border-purple-800/40 text-center">
+                    <Sparkles className="w-4 h-4 text-pink-400 mx-auto mb-1" />
+                    <span className="text-[10px] font-display font-black text-white block uppercase">Avatars</span>
+                    <span className="text-[8px] text-gray-400 block">Custom squad look</span>
+                  </div>
                 </div>
 
                 {authMsg && (
@@ -391,9 +488,8 @@ export const PlayerProfileScreen: React.FC<PlayerProfileScreenProps> = ({
                   </div>
                 )}
 
-                {/* Social Login Buttons (Google & Apple) */}
+                {/* Social Login Buttons */}
                 <div className="space-y-2">
-                  {/* Google Sign In */}
                   <button
                     onClick={handleGoogleSignIn}
                     disabled={isLoading}
@@ -420,7 +516,6 @@ export const PlayerProfileScreen: React.FC<PlayerProfileScreenProps> = ({
                     <span>Continue with Google</span>
                   </button>
 
-                  {/* Apple Sign In */}
                   <button
                     onClick={handleAppleSignIn}
                     disabled={isLoading}
@@ -434,10 +529,10 @@ export const PlayerProfileScreen: React.FC<PlayerProfileScreenProps> = ({
                 </div>
 
                 {/* Divider */}
-                <div className="flex items-center gap-2 py-1">
+                <div className="flex items-center gap-2 py-0.5">
                   <div className="flex-1 h-[1px] bg-purple-800/60" />
                   <span className="text-[10px] font-bold text-purple-400 tracking-wider uppercase">
-                    OR EMAIL OTP CODE
+                    OR EMAIL LOGIN CODE
                   </span>
                   <div className="flex-1 h-[1px] bg-purple-800/60" />
                 </div>

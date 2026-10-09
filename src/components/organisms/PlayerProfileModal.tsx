@@ -212,7 +212,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
             }`}
           >
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>{account?.isLoggedIn ? "Account Synced" : "Cloud Login"}</span>
+            <span>{account?.isLoggedIn ? "CHAOS ID" : "Link ID"}</span>
           </button>
         </div>
 
@@ -250,11 +250,11 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-yellow-300 flex-shrink-0" />
                     <span className="text-[11px] text-purple-200 font-semibold leading-tight">
-                      Playing as guest. Tap to sign in & backup your progress.
+                      Playing as guest. Tap to link your CHAOS ID & save progress.
                     </span>
                   </div>
                   <span className="text-yellow-400 text-xs font-bold flex-shrink-0 ml-1">
-                    Sign In →
+                    Link ID →
                   </span>
                 </div>
               )}
@@ -265,18 +265,18 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
             <div className="flex flex-col gap-3 py-1">
               {account?.isLoggedIn ? (
                 <div className="flex flex-col gap-3">
-                  <div className="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/40 text-left">
+                  <div className="p-3.5 rounded-2xl bg-purple-950/60 border border-purple-500/50 text-left">
                     <div className="flex items-center gap-2 mb-1">
                       <ShieldCheck className="w-5 h-5 text-emerald-400" />
                       <span className="text-white font-display font-extrabold text-sm">
-                        ACCOUNT ACTIVE & SYNCED
+                        CHAOS ID LINKED
                       </span>
                     </div>
-                    <p className="text-emerald-200 text-xs font-medium">
+                    <p className="text-purple-200 text-xs font-medium">
                       Signed in as <span className="font-bold text-white">{account.email}</span>
                     </p>
                     <p className="text-gray-400 text-[11px] mt-1">
-                      Lifetime match history, unlocks, and saboteur stats are automatically saved to your cloud profile.
+                      Your custom avatar, trophies, and host passes are securely tied to this identity.
                     </p>
                   </div>
 
@@ -297,12 +297,12 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
                       className="w-full py-2 text-[10px] text-red-400/80 hover:text-red-400 font-bold uppercase tracking-wider flex items-center justify-center gap-1 active:scale-95 transition-colors cursor-pointer"
                     >
                       <Trash2 className="w-3 h-3 text-red-400" />
-                      <span>Delete Account & Wipe Data</span>
+                      <span>Delete CHAOS Account & Reset ID</span>
                     </button>
                   ) : (
                     <div className="p-3 rounded-2xl bg-red-950/70 border border-red-500/60 space-y-2 text-center animate-fade-in">
                       <p className="text-red-200 text-[10px] font-bold leading-tight">
-                        Permanently wipe account & cloud stats? This cannot be undone.
+                        Permanently delete account & game trophies? This cannot be undone.
                       </p>
                       <div className="flex gap-2">
                         <button
@@ -325,7 +325,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
               ) : (
                 <div className="flex flex-col gap-2.5">
                   <p className="text-gray-300 text-xs leading-snug">
-                    Sign in to sync match history, unlock custom themes, and access your host pass across any device.
+                    Link your CHAOS ID to keep custom avatars, trophies, and host passes active across any device.
                   </p>
 
                   {authMsg && (
