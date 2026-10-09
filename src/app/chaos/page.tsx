@@ -231,6 +231,28 @@ export default function ChaosMainApp() {
             setActiveSession(null);
           });
       }
+
+      // Native Capacitor Deep Link listener (e.g. chaos://join?code=ABCD)
+      import("@capacitor/app")
+        .then(({ App }) => {
+          App.addListener("appUrlOpen", (event) => {
+            if (!event?.url) return;
+            try {
+              const raw = event.url;
+              const match =
+                raw.match(/code=([a-zA-Z0-9]+)/i) ||
+                raw.match(/join\/([a-zA-Z0-9]+)/i) ||
+                raw.match(/room\/([a-zA-Z0-9]+)/i);
+              if (match?.[1]) {
+                setPrefilledJoinCode(match[1].toUpperCase());
+                setView("join");
+              }
+            } catch {
+              // Non-fatal
+            }
+          }).catch(() => {});
+        })
+        .catch(() => {});
     }
 
     // Initialize native advertising, native billing, and analytics engines

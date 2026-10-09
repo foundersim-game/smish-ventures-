@@ -107,7 +107,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
     audio.play("click");
     haptics.trigger("light");
     try {
-      await navigator.clipboard.writeText(getJoinUrl() || room.roomCode);
+      await navigator.clipboard.writeText(room.roomCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -118,13 +118,13 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
   const handleShare = async () => {
     audio.play("click");
     haptics.trigger("medium");
-    const joinUrl = getJoinUrl();
+    const shareText = `🎮 Join my CHAOS game!\nRoom Code: ${room.roomCode}\nOpen CHAOS: chaos://join?code=${room.roomCode}`;
     if (navigator.share) {
       try {
         await navigator.share({
           title: "Join my CHAOS game!",
-          text: `Join my CHAOS party game with code: ${room.roomCode}!`,
-          url: joinUrl || window.location.href,
+          text: shareText,
+          url: `chaos://join?code=${room.roomCode}`,
         });
       } catch {
         handleCopyCode();
@@ -369,7 +369,6 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
           isOpen={showQr}
           onClose={() => setShowQr(false)}
           roomCode={room.roomCode}
-          joinUrl={getJoinUrl()}
         />
       </div>
     </div>
