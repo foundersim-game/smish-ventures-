@@ -28,6 +28,15 @@ export interface ActiveSession {
 const ACTIVE_SESSION_KEY = "chaos_active_session";
 const PLAYER_ID_KEY = "chaos_persistent_player_id";
 
+export interface UserAccount {
+  email: string;
+  isLoggedIn: boolean;
+  createdAt: number;
+  provider?: "google" | "apple" | "email";
+  name?: string;
+  avatar?: AvatarKey;
+}
+
 export class PlayerStorage {
   public static getOrCreatePlayerId(): string {
     if (typeof window === "undefined") {
@@ -184,7 +193,7 @@ export class PlayerStorage {
     });
   }
 
-  public static getAccount(): { email: string; isLoggedIn: boolean; createdAt: number } | null {
+  public static getAccount(): UserAccount | null {
     if (typeof window === "undefined") return null;
     try {
       const data = localStorage.getItem("chaos_user_account");
@@ -195,7 +204,7 @@ export class PlayerStorage {
     return null;
   }
 
-  public static saveAccount(account: { email: string; isLoggedIn: boolean; createdAt: number }): void {
+  public static saveAccount(account: UserAccount): void {
     if (typeof window === "undefined") return;
     try {
       localStorage.setItem("chaos_user_account", JSON.stringify(account));

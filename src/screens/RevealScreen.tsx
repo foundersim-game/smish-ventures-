@@ -13,6 +13,7 @@ import { CardFlipReveal } from "../components/organisms/CardFlipReveal";
 import { ChaosCoinToss } from "../components/organisms/ChaosCoinToss";
 import { audio } from "../services/audio/audio-manager";
 import { haptics } from "../services/haptics/haptics-manager";
+import { VoteEvaluator } from "../core/engine/vote-evaluator";
 
 const demoImages: Record<string, string> = {
   Aks: "/avatars/aks.jpg",
@@ -163,34 +164,40 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
     D: "bg-[#C084FC] text-white",
   };
 
-  const winningId = resolution.winningOptionId || options[0]?.id || "A";
-  const winningOpt = options.find((o) => o.id === winningId);
-  const winningLabel = resolution.winningOptionLabel || winningOpt?.label || options[0]?.label || "Decision Locked";
-  const winningVotes = resolution.voteTally?.[winningId]?.voteCount ?? 0;
-  const totalVotes = resolution.totalVotes || players.length;
+  // Guarantee resolution strictly matches current round
+  const effectiveResolution =
+    resolution && resolution.roundIndex === room.currentRoundIndex && resolution.winningOptionId
+      ? resolution
+      : VoteEvaluator.evaluateRound(room.currentRoundIndex, options, players);
 
-  // Robust tie detection: reads resolution.isTie or inspects voteTally directly
+  const winningId = effectiveResolution.winningOptionId || options[0]?.id || "A";
+  const winningOpt = options.find((o) => o.id === winningId) || options[0];
+  const winningLabel = winningOpt?.label || effectiveResolution.winningOptionLabel || "Decision Locked";
+  const winningVotes = effectiveResolution.voteTally?.[winningId]?.voteCount ?? 0;
+  const totalVotes = effectiveResolution.totalVotes || players.length;
+
+  // Robust tie detection: reads effectiveResolution.isTie or inspects voteTally directly
   const maxVoteCount = Math.max(
-    ...Object.values(resolution.voteTally || {}).map((t) => t.voteCount),
+    ...Object.values(effectiveResolution.voteTally || {}).map((t) => t.voteCount),
     0
   );
-  const optionsWithMaxVotes = Object.values(resolution.voteTally || {})
+  const optionsWithMaxVotes = Object.values(effectiveResolution.voteTally || {})
     .filter((t) => t.voteCount === maxVoteCount && maxVoteCount > 0)
     .map((t) => t.optionId);
   const isDeadlockTie = Boolean(
-    resolution.isTie || optionsWithMaxVotes.length > 1
+    effectiveResolution.isTie || optionsWithMaxVotes.length > 1
   );
-  const tiedOptionIds = resolution.tiedOptionIds || optionsWithMaxVotes;
+  const tiedOptionIds = effectiveResolution.tiedOptionIds || optionsWithMaxVotes;
   const tiedOptions = options.filter((o) => tiedOptionIds.includes(o.id));
 
-  const keptPlayers = (resolution.keptVotePlayerIds || [])
+  const keptPlayers = (effectiveResolution.keptVotePlayerIds || [])
     .map((id) => playerMap.get(id))
     .filter(Boolean) as PlayerSession[];
 
   const handleNextRoundClick = () => {
     audio.play("click");
     haptics.trigger("medium");
-    if (resolution.switchedPlayerCount > 0) {
+    if (effectiveResolution.switchedPlayerCount > 0) {
       onAdvanceBeat("influence");
     } else {
       onAdvanceBeat("consequence");
@@ -352,7 +359,7 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
             {/* 4 Option Breakdown Columns (Screen Reveal End) */}
             <div className="grid grid-cols-4 gap-1.5 w-full mt-1">
               {options.map((opt) => {
-                const tally = resolution.voteTally[opt.id];
+                const tally = effectiveResolution.voteTally[opt.id];
                 const isWinner = opt.id === winningId;
                 const isTied = isDeadlockTie && tiedOptionIds.includes(opt.id);
                 const count = tally?.voteCount || 0;
@@ -433,10 +440,10 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
               </div>
               <div className="text-left">
                 <h5 className="text-pink-400 font-bold text-xs uppercase tracking-wider">
-                  {resolution.switchedPlayerCount} {resolution.switchedPlayerCount === 1 ? "person" : "people"} changed their minds!
+                  {effectiveResolution.switchedPlayerCount} {effectiveResolution.switchedPlayerCount === 1 ? "person" : "people"} changed their minds!
                 </h5>
                 <p className="text-gray-300 text-[11px] mt-0.5 leading-snug">
-                  Out of {resolution.totalVotes} players, {resolution.switchedPlayerCount} switched from their original vote.
+                  Out of {effectiveResolution.totalVotes} players, {effectiveResolution.switchedPlayerCount} switched from their original vote.
                 </p>
               </div>
             </div>
@@ -450,7 +457,7 @@ export const RevealScreen: React.FC<RevealScreenProps> = ({
                 </h6>
 
                 <div className="flex flex-col gap-1.5">
-                  {resolution.mindChanges.map((mc) => {
+                  {effectiveResolution.mindChanges.map((mc) => {
                     const matchedPlayer = players.find((p) => p.id === mc.playerId) || {
                       name: mc.playerName,
                       avatar: "brain" as const,

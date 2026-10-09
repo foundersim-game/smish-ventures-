@@ -24,10 +24,21 @@ export async function GET(
   const players = await repo.getPlayers(room.id);
   const scenario = ScenarioRegistry.getById(room.scenarioId);
 
-  let resolution: any = GameplayService.getCurrentResolution(room.id) || null;
-  let consequence: any = GameplayService.getCurrentConsequence(room.id) || null;
+  const isRevealOrAfter =
+    room.phase.startsWith("reveal_") ||
+    room.phase === "consequence" ||
+    room.phase === "round_wrap" ||
+    room.phase === "influence" ||
+    room.phase === "blame";
 
-  if (!resolution || !consequence) {
+  let resolution: any = isRevealOrAfter
+    ? GameplayService.getCurrentResolution(room.id, room.currentRoundIndex) || null
+    : null;
+  let consequence: any = isRevealOrAfter
+    ? GameplayService.getCurrentConsequence(room.id, room.currentRoundIndex) || null
+    : null;
+
+  if (isRevealOrAfter && (!resolution || !consequence)) {
     try {
       const supabase = getSupabaseClient();
       const { data: dbData } = await supabase
@@ -38,8 +49,12 @@ export async function GET(
         .maybeSingle();
 
       if (dbData?.data) {
-        if (!resolution && dbData.data.resolution) resolution = dbData.data.resolution;
-        if (!consequence && dbData.data.consequence) consequence = dbData.data.consequence;
+        if (!resolution && dbData.data.resolution && dbData.data.resolution.roundIndex === room.currentRoundIndex) {
+          resolution = dbData.data.resolution;
+        }
+        if (!consequence && dbData.data.consequence) {
+          consequence = dbData.data.consequence;
+        }
       }
     } catch {
       // Ignored
@@ -47,10 +62,7 @@ export async function GET(
   }
 
   // If in reveal/consequence/blame phase and resolution is not set, dynamically evaluate from actual round options and players
-  if (
-    !resolution &&
-    (room.phase.startsWith("reveal_") || room.phase === "consequence" || room.phase === "blame")
-  ) {
+  if (isRevealOrAfter && (!resolution || resolution.roundIndex !== room.currentRoundIndex)) {
     const currentRound = scenario?.rounds[room.currentRoundIndex - 1];
     if (currentRound && players.length > 0) {
       resolution = VoteEvaluator.evaluateRound(room.currentRoundIndex, currentRound.options, players);

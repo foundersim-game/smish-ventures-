@@ -36,17 +36,51 @@ export const SCENARIO_CATALOG: ScenarioDefinition[] = [
   COUPLES_FUTURE_SCENARIO,
 ];
 
+const globalForScenarios = global as unknown as {
+  chaosDynamicScenarios?: Map<string, ScenarioDefinition>;
+};
+
 export class ScenarioRegistry {
+  private static get dynamicStore(): Map<string, ScenarioDefinition> {
+    if (!globalForScenarios.chaosDynamicScenarios) {
+      globalForScenarios.chaosDynamicScenarios = new Map<string, ScenarioDefinition>();
+    }
+    return globalForScenarios.chaosDynamicScenarios;
+  }
+
+  /**
+   * Registers dynamic scenarios fetched remotely (e.g. weekly database drops).
+   */
+  public static registerDynamic(scenarios: ScenarioDefinition[]): void {
+    for (const s of scenarios) {
+      if (s && s.id) {
+        this.dynamicStore.set(s.id, s);
+      }
+    }
+  }
+
+  /**
+   * Retrieves all available scenarios (static catalog + weekly dynamic drops).
+   */
   public static getAll(): ScenarioDefinition[] {
-    return SCENARIO_CATALOG;
+    const list = [...SCENARIO_CATALOG];
+    for (const [id, dyn] of this.dynamicStore.entries()) {
+      const idx = list.findIndex((s) => s.id === id);
+      if (idx >= 0) {
+        list[idx] = dyn;
+      } else {
+        list.push(dyn);
+      }
+    }
+    return list;
   }
 
   public static getById(id: string): ScenarioDefinition | undefined {
-    return SCENARIO_CATALOG.find((s) => s.id === id);
+    return this.dynamicStore.get(id) || SCENARIO_CATALOG.find((s) => s.id === id);
   }
 
   public static getByCategory(category: string): ScenarioDefinition[] {
-    return SCENARIO_CATALOG.filter((s) => s.category === category);
+    return this.getAll().filter((s) => s.category === category);
   }
 
   /**
@@ -58,7 +92,7 @@ export class ScenarioRegistry {
     tier?: "free" | "premium"
   ): ScenarioDefinition[] {
     const isCouples = mode === "couples";
-    return SCENARIO_CATALOG.filter((s) => {
+    return this.getAll().filter((s) => {
       const matchesMode = isCouples ? s.category === "couples" : s.category !== "couples";
       if (!matchesMode) return false;
       if (tier === "free") return !s.isPremium;
@@ -68,23 +102,23 @@ export class ScenarioRegistry {
   }
 
   public static getFreeScenarios(): ScenarioDefinition[] {
-    return SCENARIO_CATALOG.filter((s) => !s.isPremium && s.category !== "couples");
+    return this.getAll().filter((s) => !s.isPremium && s.category !== "couples");
   }
 
   public static getPremiumScenarios(): ScenarioDefinition[] {
-    return SCENARIO_CATALOG.filter((s) => s.isPremium);
+    return this.getAll().filter((s) => s.isPremium);
   }
 
   public static getDefaultPartyScenario(): ScenarioDefinition {
-    return QUICK_CHAOS_SCENARIO;
+    return this.getById("quick_chaos") || QUICK_CHAOS_SCENARIO;
   }
 
   public static getDefaultCouplesScenario(): ScenarioDefinition {
-    return COUPLES_PACK_SCENARIO;
+    return this.getById("couples_pack") || COUPLES_PACK_SCENARIO;
   }
 
   public static getDefaultScenarioForMode(mode: GameMode): ScenarioDefinition {
-    return mode === "couples" ? COUPLES_PACK_SCENARIO : QUICK_CHAOS_SCENARIO;
+    return mode === "couples" ? this.getDefaultCouplesScenario() : this.getDefaultPartyScenario();
   }
 }
 

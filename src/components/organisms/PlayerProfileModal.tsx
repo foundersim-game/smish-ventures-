@@ -1,10 +1,22 @@
-import React, { useState } from "react";
-import { X, Check, User, ShieldCheck, Mail, Lock, LogOut, Sparkles } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import {
+  X,
+  Check,
+  User,
+  ShieldCheck,
+  Mail,
+  KeyRound,
+  LogOut,
+  Sparkles,
+  ArrowRight,
+  RefreshCw,
+} from "lucide-react";
 import { AvatarKey } from "../../core/types/player.types";
-import { PlayerStorage } from "../../services/storage/player-storage";
+import { PlayerStorage, UserAccount } from "../../services/storage/player-storage";
 import { AvatarPicker } from "../molecules/AvatarPicker";
 import { audio } from "../../services/audio/audio-manager";
 import { haptics } from "../../services/haptics/haptics-manager";
+import { AuthClient } from "../../services/auth/auth-client";
 
 interface PlayerProfileModalProps {
   isOpen: boolean;
@@ -23,10 +35,19 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
   const [activeTab, setActiveTab] = useState<"profile" | "account">("profile");
 
   // Account State
-  const [account, setAccount] = useState(PlayerStorage.getAccount());
+  const [account, setAccount] = useState<UserAccount | null>(PlayerStorage.getAccount());
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [authMsg, setAuthMsg] = useState<string | null>(null);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [authMsg, setAuthMsg] = useState<{ text: string; isError?: boolean } | null>(null);
+
+  useEffect(() => {
+    const unsub = AuthClient.initAuthListener((updated) => {
+      setAccount(updated);
+    });
+    return unsub;
+  }, []);
 
   if (!isOpen) return null;
 
@@ -39,50 +60,83 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
     onClose();
   };
 
-  const handleCreateAccount = () => {
-    if (!email.trim() || !password.trim()) {
-      setAuthMsg("Please enter both email and password.");
+  const handleSendOtp = async () => {
+    if (!email.trim() || !email.includes("@")) {
+      setAuthMsg({ text: "Please enter a valid email address.", isError: true });
       return;
     }
-    if (password.length < 6) {
-      setAuthMsg("Password must be at least 6 characters.");
-      return;
+    setIsLoading(true);
+    setAuthMsg(null);
+    audio.play("click");
+
+    const res = await AuthClient.requestEmailOtp(email);
+    setIsLoading(false);
+    if (res.success) {
+      setOtpSent(true);
+      setAuthMsg({ text: res.message || "Code sent to your email!" });
+    } else {
+      setAuthMsg({ text: res.error || "Failed to send code.", isError: true });
     }
-    const newAccount = {
-      email: email.trim(),
-      isLoggedIn: true,
-      createdAt: Date.now(),
-    };
-    PlayerStorage.saveAccount(newAccount);
-    setAccount(newAccount);
-    setAuthMsg("Account created! Stats and profile are now synced to cloud.");
-    audio.play("fanfare");
-    haptics.trigger("chaos_moment");
   };
 
-  const handleSignIn = () => {
-    if (!email.trim() || !password.trim()) {
-      setAuthMsg("Please enter your email and password.");
+  const handleVerifyOtp = async () => {
+    if (!otpCode.trim() || otpCode.trim().length < 6) {
+      setAuthMsg({ text: "Enter the complete 6-digit verification code.", isError: true });
       return;
     }
-    const newAccount = {
-      email: email.trim(),
-      isLoggedIn: true,
-      createdAt: Date.now(),
-    };
-    PlayerStorage.saveAccount(newAccount);
-    setAccount(newAccount);
-    setAuthMsg("Signed in successfully! Cloud sync active.");
+    setIsLoading(true);
+    setAuthMsg(null);
     audio.play("click");
-    haptics.trigger("medium");
+
+    const res = await AuthClient.verifyEmailOtp(email, otpCode);
+    setIsLoading(false);
+    if (res.success && res.account) {
+      setAccount(res.account);
+      setOtpSent(false);
+      setOtpCode("");
+      setAuthMsg({ text: "Account synced successfully!" });
+      audio.play("fanfare");
+      haptics.trigger("chaos_moment");
+    } else {
+      setAuthMsg({ text: res.error || "Invalid code. Please try again.", isError: true });
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    audio.play("click");
+    setIsLoading(true);
+    const res = await AuthClient.signInWithGoogle();
+    setIsLoading(false);
+    if (res.success) {
+      setAccount(PlayerStorage.getAccount());
+      setAuthMsg({ text: "Signed in with Google!" });
+      audio.play("fanfare");
+    } else if (res.error) {
+      setAuthMsg({ text: res.error, isError: true });
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    audio.play("click");
+    setIsLoading(true);
+    const res = await AuthClient.signInWithApple();
+    setIsLoading(false);
+    if (res.success) {
+      setAccount(PlayerStorage.getAccount());
+      setAuthMsg({ text: "Signed in with Apple!" });
+      audio.play("fanfare");
+    } else if (res.error) {
+      setAuthMsg({ text: res.error, isError: true });
+    }
   };
 
   const handleLogout = () => {
     PlayerStorage.logoutAccount();
     setAccount(null);
     setEmail("");
-    setPassword("");
-    setAuthMsg("Signed out. Playing as local guest.");
+    setOtpCode("");
+    setOtpSent(false);
+    setAuthMsg({ text: "Signed out. Playing as guest." });
     audio.play("click");
     haptics.trigger("light");
   };
@@ -108,7 +162,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
               audio.play("click");
               onClose();
             }}
-            className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-gray-300"
+            className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-gray-300 cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -121,7 +175,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
               setActiveTab("profile");
               audio.play("click");
             }}
-            className={`flex-1 py-1.5 rounded-lg text-xs font-display font-extrabold uppercase transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-1.5 rounded-lg text-xs font-display font-extrabold uppercase transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               activeTab === "profile"
                 ? "bg-purple-600 text-white shadow-md"
                 : "text-gray-400 hover:text-white"
@@ -135,14 +189,14 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
               setActiveTab("account");
               audio.play("click");
             }}
-            className={`flex-1 py-1.5 rounded-lg text-xs font-display font-extrabold uppercase transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-1.5 rounded-lg text-xs font-display font-extrabold uppercase transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               activeTab === "account"
                 ? "bg-purple-600 text-white shadow-md"
                 : "text-gray-400 hover:text-white"
             }`}
           >
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>{account?.isLoggedIn ? "Account Synced" : "Create Account"}</span>
+            <span>{account?.isLoggedIn ? "Account Synced" : "Cloud Login"}</span>
           </button>
         </div>
 
@@ -180,11 +234,11 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-yellow-300 flex-shrink-0" />
                     <span className="text-[11px] text-purple-200 font-semibold leading-tight">
-                      Playing as guest. Tap to create a free account & save stats.
+                      Playing as guest. Tap to sign in & backup your progress.
                     </span>
                   </div>
                   <span className="text-yellow-400 text-xs font-bold flex-shrink-0 ml-1">
-                    Sign Up →
+                    Sign In →
                   </span>
                 </div>
               )}
@@ -212,7 +266,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
 
                   <button
                     onClick={handleLogout}
-                    className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-gray-200 font-display font-bold text-xs uppercase flex items-center justify-center gap-2 transition-all active:scale-95"
+                    className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-gray-200 font-display font-bold text-xs uppercase flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
                   >
                     <LogOut className="w-4 h-4 text-red-400" />
                     <span>Sign Out</span>
@@ -221,61 +275,126 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
               ) : (
                 <div className="flex flex-col gap-2.5">
                   <p className="text-gray-300 text-xs leading-snug">
-                    Create a free CHAOS account or sign in to sync lifetime game history, unlock badges, and host from any device.
+                    Sign in to sync match history, unlock custom themes, and access your host pass across any device.
                   </p>
 
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
-                      EMAIL ADDRESS
-                    </label>
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-purple-950/70 border border-purple-600/50">
-                      <Mail className="w-4 h-4 text-gray-400" />
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="you@domain.com"
-                        className="w-full bg-transparent text-white font-medium text-xs outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
-                      PASSWORD
-                    </label>
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-purple-950/70 border border-purple-600/50">
-                      <Lock className="w-4 h-4 text-gray-400" />
-                      <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full bg-transparent text-white font-medium text-xs outline-none"
-                      />
-                    </div>
-                  </div>
-
                   {authMsg && (
-                    <p className="text-yellow-300 text-[11px] font-medium leading-tight">
-                      {authMsg}
-                    </p>
+                    <div
+                      className={`p-2 rounded-lg border text-xs font-medium ${
+                        authMsg.isError
+                          ? "bg-red-950/40 border-red-500/50 text-red-200"
+                          : "bg-purple-950/50 border-purple-500/50 text-purple-200"
+                      }`}
+                    >
+                      {authMsg.text}
+                    </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-2 mt-1">
+                  {/* Social Logins */}
+                  <div className="space-y-2">
                     <button
-                      onClick={handleCreateAccount}
-                      className="py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-display font-extrabold text-xs uppercase shadow-md active:scale-95 transition-all text-center"
+                      onClick={handleGoogleSignIn}
+                      disabled={isLoading}
+                      className="w-full py-2 px-3 rounded-xl bg-white hover:bg-gray-100 text-gray-900 font-sans font-bold text-xs flex items-center justify-center gap-2 shadow active:scale-95 transition-all cursor-pointer disabled:opacity-50"
                     >
-                      Create Account
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
+                        <path
+                          fill="#4285F4"
+                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                        />
+                        <path
+                          fill="#34A853"
+                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                        />
+                        <path
+                          fill="#FBBC05"
+                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                        />
+                        <path
+                          fill="#EA4335"
+                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                        />
+                      </svg>
+                      <span>Continue with Google</span>
                     </button>
+
                     <button
-                      onClick={handleSignIn}
-                      className="py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-white font-display font-bold text-xs uppercase active:scale-95 transition-all text-center"
+                      onClick={handleAppleSignIn}
+                      disabled={isLoading}
+                      className="w-full py-2 px-3 rounded-xl bg-black hover:bg-gray-900 border border-gray-700 text-white font-sans font-bold text-xs flex items-center justify-center gap-2 shadow active:scale-95 transition-all cursor-pointer disabled:opacity-50"
                     >
-                      Sign In
+                      <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 170 170">
+                        <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.69-3.04-7.67-7.81-11.96-14.34-6.68-10.12-11.83-21.65-15.46-34.6-3.63-12.95-5.45-25.07-5.45-36.35 0-14.94 3.63-27.17 10.89-36.7 7.26-9.52 16.36-14.39 27.31-14.6 4.8 0 10.11 1.25 15.93 3.75 5.82 2.5 9.72 3.75 11.7 3.75 1.54 0 5.58-1.29 12.13-3.86 6.55-2.58 12.01-3.71 16.37-3.39 12.39.99 22.18 5.61 29.36 13.88-10.89 6.64-16.22 15.77-16.01 27.39.22 9.06 3.69 16.74 10.41 23.05 6.72 6.31 14.86 10.05 24.42 11.22-2.18 6.42-4.99 13.1-8.44 20.06zM119.22 33.15c0-7.44 2.65-14.43 7.95-20.97 5.3-6.54 11.93-10.68 19.89-12.43.32 1.49.48 2.87.48 4.13 0 7.33-2.73 14.45-8.19 21.36-5.46 6.91-12.16 11.08-20.13 12.51-.11-1.38-.17-2.75-.17-4.6z" />
+                      </svg>
+                      <span>Sign in with Apple</span>
                     </button>
                   </div>
+
+                  {/* Divider */}
+                  <div className="flex items-center gap-2 py-0.5">
+                    <div className="flex-1 h-[1px] bg-purple-800/60" />
+                    <span className="text-[9px] font-bold text-purple-400 uppercase">
+                      OR EMAIL OTP
+                    </span>
+                    <div className="flex-1 h-[1px] bg-purple-800/60" />
+                  </div>
+
+                  {!otpSent ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-purple-950/70 border border-purple-600/50">
+                        <Mail className="w-4 h-4 text-gray-400" />
+                        <input
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="you@domain.com"
+                          className="w-full bg-transparent text-white font-medium text-xs outline-none"
+                        />
+                      </div>
+
+                      <button
+                        onClick={handleSendOtp}
+                        disabled={isLoading || !email.trim()}
+                        className="w-full py-2 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-white font-display font-extrabold text-xs uppercase flex items-center justify-center gap-1.5 shadow active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        {isLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                        <span>Send Login Code</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs text-gray-300">
+                        <span className="truncate">{email}</span>
+                        <button
+                          onClick={() => { setOtpSent(false); setOtpCode(""); }}
+                          className="text-pink-400 text-[10px] underline cursor-pointer"
+                        >
+                          Change
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-purple-950/70 border border-yellow-500/50">
+                        <KeyRound className="w-4 h-4 text-yellow-400" />
+                        <input
+                          type="text"
+                          maxLength={6}
+                          value={otpCode}
+                          onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                          placeholder="6-digit code"
+                          className="w-full bg-transparent text-yellow-300 font-mono font-bold text-sm tracking-widest outline-none text-center"
+                        />
+                      </div>
+
+                      <button
+                        onClick={handleVerifyOtp}
+                        disabled={isLoading || otpCode.length < 6}
+                        className="w-full py-2 rounded-xl bg-emerald-600 text-white font-display font-extrabold text-xs uppercase flex items-center justify-center gap-1.5 shadow active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        {isLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                        <span>Verify & Sign In</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

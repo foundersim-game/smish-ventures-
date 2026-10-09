@@ -46,7 +46,7 @@ export class GameplayService {
     return RealtimeEventBus.getInstance();
   }
 
-  // Cached resolutions per room
+  // Cached resolutions per room (round-indexed)
   private static get currentResolutions(): Map<string, RoundVoteResolution> {
     if (!globalForGameplay.chaosResolutions) {
       globalForGameplay.chaosResolutions = new Map<string, RoundVoteResolution>();
@@ -473,7 +473,9 @@ export class GameplayService {
       }
     }
 
-    // Clean up per-round data from BlameService to avoid contamination
+    // Clean up per-round data to avoid cross-round contamination
+    this.currentResolutions.delete(room.id);
+    this.currentConsequences.delete(room.id);
     try {
       const { BlameService } = await import("./blame.service");
       BlameService.clearRoundData(room.id);
@@ -537,12 +539,22 @@ export class GameplayService {
     return this.currentModifiers.get(roomId);
   }
 
-  public static getCurrentResolution(roomId: string): RoundVoteResolution | undefined {
-    return this.currentResolutions.get(roomId);
+  public static getCurrentResolution(roomId: string, roundIndex?: number): RoundVoteResolution | undefined {
+    const res = this.currentResolutions.get(roomId);
+    if (!res) return undefined;
+    if (typeof roundIndex === "number" && res.roundIndex !== roundIndex) {
+      return undefined;
+    }
+    return res;
   }
 
-  public static getCurrentConsequence(roomId: string): any {
-    return this.currentConsequences.get(roomId);
+  public static getCurrentConsequence(roomId: string, roundIndex?: number): any {
+    const c = this.currentConsequences.get(roomId);
+    if (!c) return undefined;
+    if (typeof roundIndex === "number" && c.roundIndex && c.roundIndex !== roundIndex) {
+      return undefined;
+    }
+    return c;
   }
 
   public static setReceipts(roomId: string, receipts: any): void {

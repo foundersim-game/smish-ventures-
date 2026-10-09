@@ -125,4 +125,19 @@ export class ApiClient {
     const res = await fetch(`${getApiBaseUrl()}/api/rooms`);
     return res.json();
   }
+
+  public static async getScenarios(): Promise<ScenarioDefinition[]> {
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/api/scenarios?_t=${Date.now()}`, {
+        cache: "no-store",
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.scenarios)) {
+        return data.scenarios;
+      }
+    } catch {
+      // Non-fatal
+    }
+    return [];
+  }
 }

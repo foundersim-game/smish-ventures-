@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 import { PlayerStorage } from "../storage/player-storage";
 
 export type AnalyticsEventName =
@@ -17,12 +18,33 @@ export type AnalyticsEventName =
   | "ad_banner_shown"
   | "ad_interstitial_shown";
 
+const getFirebaseAnalytics = async () => {
+  if (typeof window === "undefined") return null;
+  try {
+    const pkg = "@capacitor-firebase/analytics";
+    const mod = await import(/* webpackIgnore: true */ pkg);
+    return mod?.FirebaseAnalytics || null;
+  } catch {
+    return null;
+  }
+};
+
 export class AnalyticsService {
   private static isInitialized = false;
 
   public static initialize(): void {
     if (this.isInitialized) return;
     this.isInitialized = true;
+
+    if (Capacitor.isNativePlatform()) {
+      const deviceId = PlayerStorage.getDeviceId();
+      getFirebaseAnalytics()
+        .then((fa) => {
+          fa?.setUserId({ userId: deviceId }).catch(() => {});
+        })
+        .catch(() => {});
+    }
+
     this.trackEvent("app_loaded", {
       platform: typeof window !== "undefined" ? window.navigator.userAgent : "server",
     });
@@ -48,13 +70,29 @@ export class AnalyticsService {
       console.log(`[Analytics] 📊 ${name}:`, eventPayload);
     }
 
-    // 2. Dispatch to Google Analytics (gtag) if present on window
+    // 2. Dispatch to Firebase Analytics on native iOS / Android
+    if (Capacitor.isNativePlatform()) {
+      getFirebaseAnalytics()
+        .then((fa) => {
+          fa?.logEvent({
+            name,
+            params: eventPayload,
+          }).catch((err: any) => {
+            if (process.env.NODE_ENV !== "production") {
+              console.warn("[Analytics] Firebase logEvent error:", err);
+            }
+          });
+        })
+        .catch(() => {});
+    }
+
+    // 3. Dispatch to Google Analytics (gtag) if present on window
     if (typeof window !== "undefined") {
       const win = window as any;
       if (win.gtag) {
         win.gtag("event", name, eventPayload);
       }
-      // 3. Dispatch to PostHog if present on window
+      // 4. Dispatch to PostHog if present on window
       if (win.posthog) {
         win.posthog.capture(name, eventPayload);
       }

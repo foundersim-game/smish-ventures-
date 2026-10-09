@@ -99,6 +99,7 @@ export default function ChaosMainApp() {
     updatedResourceState: Record<string, number>;
     isChaosMoment: boolean;
     chaosMomentMessage: string | null;
+    roundIndex?: number;
   } | null>(null);
   const [scoreBreakdowns, setScoreBreakdowns] = useState<
     Record<string, PlayerScoreBreakdown>
@@ -134,6 +135,13 @@ export default function ChaosMainApp() {
       const seen = sessionStorage.getItem("chaos_splash_seen");
       if (seen) setShowSplash(false);
     }
+
+    // Sync weekly dynamic scenarios dropped without app update
+    ApiClient.getScenarios().then((dynamicDrops) => {
+      if (dynamicDrops && dynamicDrops.length > 0) {
+        ScenarioRegistry.registerDynamic(dynamicDrops);
+      }
+    }).catch(() => {});
 
     const profile = PlayerStorage.getProfile();
     setCurrentPlayer({
@@ -531,11 +539,16 @@ export default function ChaosMainApp() {
           return prevStr !== freshStr ? mergedPlayers : prev;
         });
 
-        if (fresh.resolution && !resolution) {
+        if (fresh.resolution && fresh.resolution.roundIndex === currentRoundIdx) {
           setResolution(fresh.resolution);
+        } else if (resolution && resolution.roundIndex !== currentRoundIdx) {
+          setResolution(null);
         }
-        if (fresh.consequence && !consequenceData) {
+
+        if (fresh.consequence && (!fresh.consequence.roundIndex || fresh.consequence.roundIndex === currentRoundIdx)) {
           setConsequenceData(fresh.consequence);
+        } else if (consequenceData && consequenceData.roundIndex && consequenceData.roundIndex !== currentRoundIdx) {
+          setConsequenceData(null);
         }
 
         setRoom((prev) => {
