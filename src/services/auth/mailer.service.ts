@@ -1,5 +1,12 @@
 import nodemailer, { Transporter } from "nodemailer";
 
+export interface SendMailResult {
+  success: boolean;
+  simulated?: boolean;
+  reason?: string;
+  error?: string;
+}
+
 export class MailerService {
   private static transporter: Transporter | null = null;
 
@@ -33,10 +40,32 @@ export class MailerService {
   /**
    * Sends a styled CHAOS OTP verification email.
    */
-  public static async sendOtpEmail(toEmail: string, otp: string): Promise<{ success: boolean; simulated?: boolean }> {
-    const transporter = this.getTransporter();
-    const fromAddress = process.env.SMTP_FROM || `"CHAOS Party Game" <noreply@smishventures.com>`;
+  public static async sendOtpEmail(toEmail: string, otp: string): Promise<SendMailResult> {
+    const user = process.env.SMTP_USER;
+    const pass = process.env.SMTP_PASS;
+    const host = process.env.SMTP_HOST || "smtp.hostinger.com";
 
+    if (!user || !pass) {
+      const missing = [];
+      if (!user) missing.push("SMTP_USER");
+      if (!pass) missing.push("SMTP_PASS");
+      return {
+        success: true,
+        simulated: true,
+        reason: `Missing server credentials: ${missing.join(", ")}`,
+      };
+    }
+
+    const transporter = this.getTransporter();
+    if (!transporter) {
+      return {
+        success: true,
+        simulated: true,
+        reason: "Failed to initialize nodemailer transporter",
+      };
+    }
+
+    const fromAddress = process.env.SMTP_FROM || `"CHAOS Party Game" <${user}>`;
     const subject = `Your CHAOS Login Code: ${otp}`;
     const htmlContent = `
       <!DOCTYPE html>
@@ -70,28 +99,23 @@ export class MailerService {
       </html>
     `;
 
-    if (!transporter) {
-      console.log(`\n======================================================`);
-      console.log(`[CHAOS AUTH] SMTP not configured. SIMULATING EMAIL:`);
-      console.log(`To: ${toEmail}`);
-      console.log(`OTP Code: ${otp}`);
-      console.log(`======================================================\n`);
-      return { success: true, simulated: true };
-    }
-
     try {
-      await transporter.sendMail({
+      const info = await transporter.sendMail({
         from: fromAddress,
         to: toEmail,
         subject,
         html: htmlContent,
       });
-      return { success: true, simulated: false };
-    } catch (err) {
+      return { success: true, simulated: false, reason: `Sent: ${info.messageId}` };
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
       console.error("[CHAOS AUTH] Error sending email via SMTP:", err);
-      // Fallback: log so flow doesn't completely block in staging
-      console.log(`[CHAOS AUTH FALLBACK CODE] ${otp}`);
-      return { success: true, simulated: true };
+      return {
+        success: true,
+        simulated: true,
+        reason: "SMTP_ERROR",
+        error: errMsg,
+      };
     }
   }
 }

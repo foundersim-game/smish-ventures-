@@ -27,6 +27,15 @@ export async function POST(req: NextRequest) {
         ? `Code sent! (Dev mode: OTP is ${otp} or use 123456)`
         : `A 6-digit access code has been dispatched to ${email}`,
       simulated: mailResult.simulated,
+      diagnostic: {
+        reason: mailResult.reason,
+        error: mailResult.error,
+        smtpHostSet: Boolean(process.env.SMTP_HOST),
+        smtpUserSet: Boolean(process.env.SMTP_USER),
+        smtpPassSet: Boolean(process.env.SMTP_PASS),
+        smtpPortSet: Boolean(process.env.SMTP_PORT),
+        smtpFromSet: Boolean(process.env.SMTP_FROM),
+      },
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to process OTP request";

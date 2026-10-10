@@ -16,6 +16,7 @@ import { audio } from "@/services/audio/audio-manager";
 import { haptics } from "@/services/haptics/haptics-manager";
 import { AdMobService } from "@/services/ads/admob.service";
 import { NativePaymentService } from "@/services/payments/native-payment.service";
+import { AuthClient } from "@/services/auth/auth-client";
 
 import { HomeScreen } from "@/screens/HomeScreen";
 import { JoinScreen } from "@/screens/JoinScreen";
@@ -303,7 +304,14 @@ export default function ChaosMainApp() {
     document.addEventListener("visibilitychange", handleVisibilitySync);
     window.addEventListener("focus", handleVisibilitySync);
 
+    const authUnsub = AuthClient.initAuthListener((acc) => {
+      if (acc && typeof window !== "undefined" && window.location.hash) {
+        window.history.replaceState(null, "", window.location.pathname);
+      }
+    });
+
     return () => {
+      authUnsub();
       window.removeEventListener("popstate", handlePopState);
       document.removeEventListener("visibilitychange", handleVisibilitySync);
       window.removeEventListener("focus", handleVisibilitySync);

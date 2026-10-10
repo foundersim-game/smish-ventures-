@@ -62,7 +62,10 @@ export class AuthClient {
   public static async signInWithGoogle(): Promise<{ success: boolean; error?: string }> {
     try {
       const supabase = getSupabaseClient();
-      const redirectUrl = typeof window !== "undefined" ? `${window.location.origin}/chaos` : undefined;
+      const redirectUrl =
+        typeof window !== "undefined"
+          ? `${window.location.origin}${window.location.pathname}`
+          : undefined;
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -102,7 +105,10 @@ export class AuthClient {
   public static async signInWithApple(): Promise<{ success: boolean; error?: string }> {
     try {
       const supabase = getSupabaseClient();
-      const redirectUrl = typeof window !== "undefined" ? `${window.location.origin}/chaos` : undefined;
+      const redirectUrl =
+        typeof window !== "undefined"
+          ? `${window.location.origin}${window.location.pathname}`
+          : undefined;
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "apple",
