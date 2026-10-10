@@ -25,6 +25,7 @@ import { AvatarPicker } from "../components/molecules/AvatarPicker";
 import { audio } from "../services/audio/audio-manager";
 import { haptics } from "../services/haptics/haptics-manager";
 import { AuthClient } from "../services/auth/auth-client";
+import { NativePaymentService } from "../services/payments/native-payment.service";
 
 interface PlayerProfileScreenProps {
   onBack: () => void;
@@ -57,6 +58,7 @@ export const PlayerProfileScreen: React.FC<PlayerProfileScreenProps> = ({
   const [authMsg, setAuthMsg] = useState<{ text: string; isError?: boolean } | null>(null);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [restoreMsg, setRestoreMsg] = useState<string | null>(null);
 
   useEffect(() => {
     // Listen for OAuth redirect state changes
@@ -162,6 +164,25 @@ export const PlayerProfileScreen: React.FC<PlayerProfileScreenProps> = ({
     haptics.trigger("light");
   };
 
+  const handleRestorePurchases = async () => {
+    setIsLoading(true);
+    audio.play("click");
+    haptics.trigger("light");
+    try {
+      const res = await NativePaymentService.restorePurchases();
+      if (res.restored) {
+        setRestoreMsg("Purchases restored successfully!");
+      } else {
+        setRestoreMsg("No active purchases found on this device.");
+      }
+    } catch {
+      setRestoreMsg("Could not connect to App Store.");
+    } finally {
+      setIsLoading(false);
+      setTimeout(() => setRestoreMsg(null), 3000);
+    }
+  };
+
   const handleDeleteAccount = async () => {
     setIsLoading(true);
     audio.play("click");
@@ -173,7 +194,7 @@ export const PlayerProfileScreen: React.FC<PlayerProfileScreenProps> = ({
     setEmail("");
     setOtpCode("");
     setOtpSent(false);
-    setAuthMsg({ text: "Account & cloud data permanently deleted." });
+    setAuthMsg({ text: "Account & game data permanently deleted." });
   };
 
   return (
@@ -232,7 +253,7 @@ export const PlayerProfileScreen: React.FC<PlayerProfileScreenProps> = ({
                 : "text-gray-400 hover:text-white"
             }`}
           >
-            CHAOS ID
+            Account
           </button>
         </div>
 
@@ -311,10 +332,11 @@ export const PlayerProfileScreen: React.FC<PlayerProfileScreenProps> = ({
         ) : (
           <div className="space-y-3.5">
             {account?.isLoggedIn ? (
-              <div className="p-4 rounded-3xl bg-gradient-to-br from-[#1C0A33] via-[#140626] to-[#0D031A] border-2 border-purple-500/50 shadow-[0_0_25px_rgba(168,85,247,0.3)] space-y-4 relative overflow-hidden">
+              /* Signed In: Clean CHAOS Account Card */
+              <div className="p-4 rounded-3xl bg-gradient-to-br from-[#1C0A33] via-[#140626] to-[#0D031A] border border-purple-500/40 shadow-[0_0_25px_rgba(168,85,247,0.25)] space-y-4 relative overflow-hidden">
                 {/* Subtle Ambient Glows */}
-                <div className="absolute -top-12 -right-12 w-32 h-32 bg-pink-600/20 rounded-full blur-2xl pointer-events-none" />
-                <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-purple-600/20 rounded-full blur-2xl pointer-events-none" />
+                <div className="absolute -top-12 -right-12 w-32 h-32 bg-pink-600/15 rounded-full blur-2xl pointer-events-none" />
+                <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-purple-600/15 rounded-full blur-2xl pointer-events-none" />
 
                 {/* Player Identity Header */}
                 <div className="flex items-center gap-3.5 relative z-10">
@@ -330,7 +352,7 @@ export const PlayerProfileScreen: React.FC<PlayerProfileScreenProps> = ({
                       </h3>
                       <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-[9px] font-extrabold text-emerald-300 flex items-center gap-1 uppercase tracking-wider flex-shrink-0">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        ACTIVE ID
+                        ACTIVE
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 mt-0.5">
@@ -346,65 +368,60 @@ export const PlayerProfileScreen: React.FC<PlayerProfileScreenProps> = ({
                   </div>
                 </div>
 
-                {/* Linked Privileges Grid */}
-                <div className="grid grid-cols-2 gap-2 relative z-10">
-                  <div className="p-2.5 rounded-2xl bg-purple-950/60 border border-purple-800/40">
-                    <div className="flex items-center gap-1.5 text-amber-400 mb-1">
-                      <Crown className="w-3.5 h-3.5" />
-                      <span className="text-[10px] font-display font-black uppercase tracking-wider">Host Status</span>
+                {/* Host Status & Store Access */}
+                <div className="p-3 rounded-2xl bg-purple-950/60 border border-purple-800/40 flex items-center justify-between relative z-10">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400 flex-shrink-0">
+                      <Crown className="w-4 h-4" />
                     </div>
-                    <div className="font-display font-black text-xs text-white">
-                      {passStatus.hasPass
-                        ? passStatus.passesRemaining === "unlimited"
-                          ? "VIP Unlimited"
-                          : `${passStatus.passesRemaining} Passes Left`
-                        : "Party Host"}
+                    <div>
+                      <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Host Status</div>
+                      <div className="text-xs font-display font-black text-white">
+                        {passStatus.hasPass
+                          ? passStatus.passesRemaining === "unlimited"
+                            ? "VIP Unlimited Host"
+                            : `${passStatus.passesRemaining} Hosted Games Left`
+                          : "Standard Party Host"}
+                      </div>
                     </div>
-                    <span className="text-[9px] text-gray-400 block mt-0.5">Tied to this ID</span>
                   </div>
+                  <button
+                    onClick={() => {
+                      audio.play("click");
+                      onOpenStore();
+                    }}
+                    className="px-2.5 py-1.5 rounded-lg bg-purple-900/80 hover:bg-purple-800 border border-purple-600/50 text-yellow-400 font-display font-bold text-[10px] uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer active:scale-95"
+                  >
+                    <span>Store</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
 
-                  <div className="p-2.5 rounded-2xl bg-purple-950/60 border border-purple-800/40">
-                    <div className="flex items-center gap-1.5 text-cyan-400 mb-1">
-                      <Trophy className="w-3.5 h-3.5" />
-                      <span className="text-[10px] font-display font-black uppercase tracking-wider">Trophies</span>
+                {/* Restore Purchases Button */}
+                <div className="relative z-10">
+                  <button
+                    onClick={handleRestorePurchases}
+                    disabled={isLoading}
+                    className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 text-gray-400 ${isLoading ? "animate-spin" : ""}`} />
+                    <span>Restore Purchases</span>
+                  </button>
+                  {restoreMsg && (
+                    <div className="mt-1.5 text-center text-[11px] text-purple-300 font-semibold animate-fade-in">
+                      {restoreMsg}
                     </div>
-                    <div className="font-display font-black text-xs text-white">
-                      Synced
-                    </div>
-                    <span className="text-[9px] text-gray-400 block mt-0.5">Career achievements</span>
-                  </div>
-
-                  <div className="p-2.5 rounded-2xl bg-purple-950/60 border border-purple-800/40">
-                    <div className="flex items-center gap-1.5 text-pink-400 mb-1">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span className="text-[10px] font-display font-black uppercase tracking-wider">Avatars</span>
-                    </div>
-                    <div className="font-display font-black text-xs text-white">
-                      {AVATAR_CATALOG.length} Presets
-                    </div>
-                    <span className="text-[9px] text-gray-400 block mt-0.5">Squad character vault</span>
-                  </div>
-
-                  <div className="p-2.5 rounded-2xl bg-purple-950/60 border border-purple-800/40">
-                    <div className="flex items-center gap-1.5 text-emerald-400 mb-1">
-                      <Zap className="w-3.5 h-3.5" />
-                      <span className="text-[10px] font-display font-black uppercase tracking-wider">Platform</span>
-                    </div>
-                    <div className="font-display font-black text-xs text-white">
-                      Cross-Play
-                    </div>
-                    <span className="text-[9px] text-gray-400 block mt-0.5">Mobile & Web</span>
-                  </div>
+                  )}
                 </div>
 
                 {/* Account Actions */}
-                <div className="space-y-2.5 pt-1 relative z-10">
+                <div className="space-y-2 pt-2 border-t border-purple-900/40 relative z-10">
                   <button
                     onClick={handleLogout}
                     className="w-full py-2.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 border border-purple-700/60 text-gray-200 font-display font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition-all shadow-md cursor-pointer"
                   >
                     <LogOut className="w-3.5 h-3.5 text-purple-300" />
-                    <span>Sign Out of CHAOS ID</span>
+                    <span>Sign Out</span>
                   </button>
 
                   {!showDeleteConfirm ? (
@@ -416,12 +433,12 @@ export const PlayerProfileScreen: React.FC<PlayerProfileScreenProps> = ({
                       className="w-full py-1 text-[11px] text-red-400/70 hover:text-red-400 font-bold uppercase tracking-wider flex items-center justify-center gap-1 active:scale-95 transition-colors cursor-pointer"
                     >
                       <Trash2 className="w-3 h-3 text-red-400" />
-                      <span>Delete CHAOS Account & Reset ID</span>
+                      <span>Delete Account & Reset ID</span>
                     </button>
                   ) : (
                     <div className="p-3 rounded-2xl bg-red-950/80 border border-red-500/60 space-y-2 text-center animate-fade-in">
                       <p className="text-red-200 text-[11px] font-bold leading-tight">
-                        Permanently delete your CHAOS ID, linked purchases, and game trophies? This cannot be undone.
+                        Permanently delete your account and linked passes? This cannot be undone.
                       </p>
                       <div className="flex gap-2">
                         <button
@@ -443,37 +460,19 @@ export const PlayerProfileScreen: React.FC<PlayerProfileScreenProps> = ({
                 </div>
               </div>
             ) : (
-              <div className="p-4 rounded-3xl bg-gradient-to-br from-[#1C0A33] via-[#140626] to-[#0D031A] border-2 border-purple-500/50 shadow-[0_0_25px_rgba(168,85,247,0.3)] space-y-3.5 relative overflow-hidden">
+              /* Signed Out: Clean Link Account View */
+              <div className="p-4 rounded-3xl bg-gradient-to-br from-[#1C0A33] via-[#140626] to-[#0D031A] border border-purple-500/40 shadow-[0_0_25px_rgba(168,85,247,0.25)] space-y-3.5 relative overflow-hidden">
                 <div className="text-center space-y-1">
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-purple-500/20 border border-purple-400/40 text-[10px] font-extrabold text-pink-300 uppercase tracking-wider">
-                    <Zap className="w-3 h-3 text-yellow-300" />
-                    <span>CHAOS ID</span>
+                    <ShieldCheck className="w-3 h-3 text-yellow-300" />
+                    <span>CHAOS ACCOUNT</span>
                   </div>
                   <h4 className="font-display font-black text-base text-white tracking-wide uppercase">
-                    LINK YOUR PLAYER IDENTITY
+                    LINK YOUR ACCOUNT
                   </h4>
                   <p className="text-gray-300 text-xs leading-relaxed max-w-xs mx-auto">
-                    Keep your host passes, custom avatars, and squad trophies active whenever you play.
+                    Sign in with Google, Apple, or Email to keep your game stats and host passes connected.
                   </p>
-                </div>
-
-                {/* 3 Game Perks */}
-                <div className="grid grid-cols-3 gap-2 py-1">
-                  <div className="p-2 rounded-xl bg-purple-950/60 border border-purple-800/40 text-center">
-                    <Crown className="w-4 h-4 text-amber-400 mx-auto mb-1" />
-                    <span className="text-[10px] font-display font-black text-white block uppercase">Host Passes</span>
-                    <span className="text-[8px] text-gray-400 block">Never lose access</span>
-                  </div>
-                  <div className="p-2 rounded-xl bg-purple-950/60 border border-purple-800/40 text-center">
-                    <Trophy className="w-4 h-4 text-cyan-400 mx-auto mb-1" />
-                    <span className="text-[10px] font-display font-black text-white block uppercase">Trophies</span>
-                    <span className="text-[8px] text-gray-400 block">Squad badges</span>
-                  </div>
-                  <div className="p-2 rounded-xl bg-purple-950/60 border border-purple-800/40 text-center">
-                    <Sparkles className="w-4 h-4 text-pink-400 mx-auto mb-1" />
-                    <span className="text-[10px] font-display font-black text-white block uppercase">Avatars</span>
-                    <span className="text-[8px] text-gray-400 block">Custom squad look</span>
-                  </div>
                 </div>
 
                 {authMsg && (
@@ -623,6 +622,23 @@ export const PlayerProfileScreen: React.FC<PlayerProfileScreenProps> = ({
                     </div>
                   </div>
                 )}
+
+                {/* Restore Purchases Button in Guest Mode */}
+                <div className="pt-1 border-t border-purple-900/40">
+                  <button
+                    onClick={handleRestorePurchases}
+                    disabled={isLoading}
+                    className="w-full py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-gray-300 font-bold text-[11px] flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3 h-3 text-gray-400 ${isLoading ? "animate-spin" : ""}`} />
+                    <span>Restore Purchases</span>
+                  </button>
+                  {restoreMsg && (
+                    <div className="mt-1.5 text-center text-[11px] text-purple-300 font-semibold animate-fade-in">
+                      {restoreMsg}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

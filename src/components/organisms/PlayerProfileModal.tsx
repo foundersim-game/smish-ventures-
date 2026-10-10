@@ -212,7 +212,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
             }`}
           >
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>{account?.isLoggedIn ? "CHAOS ID" : "Link ID"}</span>
+            <span>{account?.isLoggedIn ? "Account" : "Sign In"}</span>
           </button>
         </div>
 
@@ -254,7 +254,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
                     </span>
                   </div>
                   <span className="text-yellow-400 text-xs font-bold flex-shrink-0 ml-1">
-                    Link ID →
+                    Sign In →
                   </span>
                 </div>
               )}
@@ -269,7 +269,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
                     <div className="flex items-center gap-2 mb-1">
                       <ShieldCheck className="w-5 h-5 text-emerald-400" />
                       <span className="text-white font-display font-extrabold text-sm">
-                        CHAOS ID LINKED
+                        ACCOUNT LINKED
                       </span>
                     </div>
                     <p className="text-purple-200 text-xs font-medium">
@@ -297,7 +297,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
                       className="w-full py-2 text-[10px] text-red-400/80 hover:text-red-400 font-bold uppercase tracking-wider flex items-center justify-center gap-1 active:scale-95 transition-colors cursor-pointer"
                     >
                       <Trash2 className="w-3 h-3 text-red-400" />
-                      <span>Delete CHAOS Account & Reset ID</span>
+                      <span>Delete Account & Reset ID</span>
                     </button>
                   ) : (
                     <div className="p-3 rounded-2xl bg-red-950/70 border border-red-500/60 space-y-2 text-center animate-fade-in">
