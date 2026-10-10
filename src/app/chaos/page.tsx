@@ -308,9 +308,27 @@ export default function ChaosMainApp() {
     document.addEventListener("visibilitychange", handleVisibilitySync);
     window.addEventListener("focus", handleVisibilitySync);
 
+    const existingAcc = PlayerStorage.getAccount();
+    if (existingAcc?.email) {
+      PlayerStorage.syncCloudProfile(existingAcc.email).then((synced) => {
+        if (synced) {
+          const p = PlayerStorage.getProfile();
+          setCurrentPlayer((prev) => (prev ? { ...prev, name: p.name, avatar: p.avatar } : prev));
+        }
+      });
+    }
+
     const authUnsub = AuthClient.initAuthListener((acc) => {
       if (acc && typeof window !== "undefined" && window.location.hash) {
         window.history.replaceState(null, "", window.location.pathname);
+      }
+      if (acc?.email) {
+        PlayerStorage.syncCloudProfile(acc.email).then((synced) => {
+          if (synced) {
+            const p = PlayerStorage.getProfile();
+            setCurrentPlayer((prev) => (prev ? { ...prev, name: p.name, avatar: p.avatar } : prev));
+          }
+        });
       }
     });
 
@@ -497,6 +515,8 @@ export default function ChaosMainApp() {
       const data = JSON.parse(e.data);
       setChaosReport(data.report);
       setView("chaos_report");
+      PlayerStorage.recordGameCompleted(data.report?.chaosScore);
+      PlayerStorage.pushCloudProfile();
       AnalyticsService.trackEvent("game_completed", {
         roomCode: data.report?.roomId,
       });
@@ -898,6 +918,7 @@ export default function ChaosMainApp() {
   // Player locks initial vote
   const handleLockInitialVote = async (optionId: string) => {
     if (!room || !currentPlayer) return;
+    PlayerStorage.recordDecision();
     // Optimistic local state update for instant UI feedback
     setCurrentPlayer((prev) =>
       prev ? { ...prev, initialVoteOptionId: optionId, hasLockedInitialVote: true } : prev
@@ -976,6 +997,7 @@ export default function ChaosMainApp() {
   // Player locks final vote
   const handleLockFinalVote = async (optionId: string) => {
     if (!room || !currentPlayer) return;
+    PlayerStorage.recordDecision();
     // Optimistic local state update for instant UI feedback
     setCurrentPlayer((prev) =>
       prev ? { ...prev, finalVoteOptionId: optionId, hasLockedFinalVote: true } : prev
@@ -1161,6 +1183,8 @@ export default function ChaosMainApp() {
       const me = updated.players.find((p) => p.id === currentPlayer.id);
       if (me) setCurrentPlayer(me);
       if (updated.room.phase === "chaos_report") {
+        PlayerStorage.recordGameCompleted(updated.room.resourceState?.chaosScore);
+        PlayerStorage.pushCloudProfile();
         if (currentPlayer.isHost && updated.players.length >= 4) {
           PlayerStorage.recordAchievementProgress("party_monarch", 1, 5);
         }

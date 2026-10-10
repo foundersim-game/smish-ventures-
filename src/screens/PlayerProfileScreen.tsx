@@ -48,6 +48,7 @@ export const PlayerProfileScreen: React.FC<PlayerProfileScreenProps> = ({
   const [activeTab, setActiveTab] = useState<"profile" | "account">("profile");
   const currentAvatarDef = AVATAR_CATALOG.find((a) => a.key === avatar) || AVATAR_CATALOG[0];
   const passStatus = PlayerStorage.getHostPass();
+  const [careerStats, setCareerStats] = useState(() => PlayerStorage.getCareerStats());
 
   // Account State
   const [account, setAccount] = useState<UserAccount | null>(PlayerStorage.getAccount());
@@ -61,16 +62,41 @@ export const PlayerProfileScreen: React.FC<PlayerProfileScreenProps> = ({
   const [restoreMsg, setRestoreMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    // Listen for OAuth redirect state changes
+    // Listen for OAuth redirect state changes and sync profile by email
     const unsub = AuthClient.initAuthListener((updated) => {
       setAccount(updated);
+      if (updated?.email) {
+        PlayerStorage.syncCloudProfile(updated.email).then((synced) => {
+          if (synced) {
+            const p = PlayerStorage.getProfile();
+            setName(p.name);
+            setAvatar(p.avatar);
+            setCareerStats(PlayerStorage.getCareerStats());
+          }
+        });
+      }
     });
+
+    // If account already exists on mount, sync cloud profile in background
+    const existing = PlayerStorage.getAccount();
+    if (existing?.email) {
+      PlayerStorage.syncCloudProfile(existing.email).then((synced) => {
+        if (synced) {
+          const p = PlayerStorage.getProfile();
+          setName(p.name);
+          setAvatar(p.avatar);
+          setCareerStats(PlayerStorage.getCareerStats());
+        }
+      });
+    }
+
     return unsub;
   }, []);
 
   const handleSave = () => {
     if (!name.trim()) return;
     PlayerStorage.saveProfile({ name: name.trim(), avatar });
+    PlayerStorage.pushCloudProfile();
     audio.play("click");
     haptics.trigger("heavy");
     if (onSaved) onSaved(name.trim(), avatar);
@@ -114,7 +140,17 @@ export const PlayerProfileScreen: React.FC<PlayerProfileScreenProps> = ({
       setAccount(res.account);
       setOtpSent(false);
       setOtpCode("");
-      setAuthMsg({ text: "Account verified! Your scores & stats are backed up." });
+      setAuthMsg({ text: "Account verified! Cloud profile synced." });
+      PlayerStorage.syncCloudProfile(res.account.email).then((synced) => {
+        if (synced) {
+          const p = PlayerStorage.getProfile();
+          setName(p.name);
+          setAvatar(p.avatar);
+          setCareerStats(PlayerStorage.getCareerStats());
+        } else {
+          PlayerStorage.pushCloudProfile();
+        }
+      });
       audio.play("fanfare");
       haptics.trigger("chaos_moment");
     } else {
@@ -306,15 +342,23 @@ export const PlayerProfileScreen: React.FC<PlayerProfileScreenProps> = ({
               </h4>
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div className="p-2 rounded-xl bg-purple-950/40 border border-purple-800/30">
-                  <span className="font-display font-black text-base text-white block">18</span>
+                  <span className="font-display font-black text-base text-white block">
+                    {careerStats.gamesPlayed}
+                  </span>
                   <span className="text-[9px] text-gray-400 font-bold">Games Played</span>
                 </div>
                 <div className="p-2 rounded-xl bg-purple-950/40 border border-purple-800/30">
-                  <span className="font-display font-black text-base text-yellow-400 block">72</span>
+                  <span className="font-display font-black text-base text-yellow-400 block">
+                    {careerStats.decisionsMade}
+                  </span>
                   <span className="text-[9px] text-gray-400 font-bold">Decisions</span>
                 </div>
                 <div className="p-2 rounded-xl bg-purple-950/40 border border-purple-800/30">
-                  <span className="font-display font-black text-base text-pink-400 block">94%</span>
+                  <span className="font-display font-black text-base text-pink-400 block">
+                    {careerStats.roundsCount > 0
+                      ? `${Math.round(careerStats.totalChaos / careerStats.roundsCount)}%`
+                      : "0%"}
+                  </span>
                   <span className="text-[9px] text-gray-400 font-bold">Chaos Rating</span>
                 </div>
               </div>
@@ -355,15 +399,17 @@ export const PlayerProfileScreen: React.FC<PlayerProfileScreenProps> = ({
                         ACTIVE
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="px-1.5 py-0.2 rounded bg-purple-900/70 border border-purple-700/60 text-[9px] font-black text-purple-300 uppercase flex-shrink-0">
-                        {account.provider === "google"
-                          ? "Google"
-                          : account.provider === "apple"
-                          ? "Apple"
-                          : "Email"}
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className="px-1.5 py-0.5 rounded bg-purple-900/80 border border-purple-700/60 text-[8.5px] font-black text-purple-200 uppercase tracking-wider flex-shrink-0">
+                        CHAOS ID
                       </span>
                       <span className="text-purple-200 text-xs font-mono truncate">{account.email}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-1 text-[10px] text-gray-400">
+                      <span>Auth:</span>
+                      <span className="text-emerald-400 font-bold flex items-center gap-1">
+                        ✓ {account.provider === "google" ? "Google Account Verified" : account.provider === "apple" ? "Apple ID Verified" : "Email Code Verified"}
+                      </span>
                     </div>
                   </div>
                 </div>

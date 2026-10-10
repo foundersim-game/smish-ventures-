@@ -5,6 +5,13 @@ export interface StoredProfile {
   avatar: AvatarKey;
 }
 
+export interface PlayerCareerStats {
+  gamesPlayed: number;
+  decisionsMade: number;
+  totalChaos: number;
+  roundsCount: number;
+}
+
 const STORAGE_KEY = "chaos_player_profile";
 
 export interface HostPassStatus {
@@ -255,6 +262,92 @@ export class PlayerStorage {
     }
   }
 
+  public static getCareerStats(): PlayerCareerStats {
+    if (typeof window === "undefined") {
+      return { gamesPlayed: 0, decisionsMade: 0, totalChaos: 0, roundsCount: 0 };
+    }
+    try {
+      const data = localStorage.getItem("chaos_player_career_stats");
+      if (data) return JSON.parse(data);
+    } catch {
+      // Ignore
+    }
+    return { gamesPlayed: 0, decisionsMade: 0, totalChaos: 0, roundsCount: 0 };
+  }
+
+  public static saveCareerStats(stats: PlayerCareerStats): void {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem("chaos_player_career_stats", JSON.stringify(stats));
+    } catch {
+      // Ignore
+    }
+  }
+
+  public static recordDecision(): void {
+    const current = this.getCareerStats();
+    current.decisionsMade += 1;
+    this.saveCareerStats(current);
+  }
+
+  public static recordGameCompleted(chaosScore?: number): void {
+    const current = this.getCareerStats();
+    current.gamesPlayed += 1;
+    if (typeof chaosScore === "number" && !isNaN(chaosScore)) {
+      current.totalChaos += Math.min(100, Math.max(0, chaosScore));
+      current.roundsCount += 1;
+    }
+    this.saveCareerStats(current);
+  }
+
+  public static async syncCloudProfile(email: string): Promise<boolean> {
+    if (typeof window === "undefined" || !email) return false;
+    try {
+      const res = await fetch(`/api/auth/profile?email=${encodeURIComponent(email)}`);
+      if (!res.ok) return false;
+      const data = await res.json();
+      if (data?.success && data?.profile) {
+        const p = data.profile;
+        if (p.name && p.avatar) {
+          this.saveProfile({ name: p.name, avatar: p.avatar });
+        }
+        if (p.careerStats) {
+          this.saveCareerStats(p.careerStats);
+        }
+        if (p.passStatus) {
+          this.saveHostPass(p.passStatus);
+        }
+        return true;
+      }
+    } catch {
+      // Non-fatal
+    }
+    return false;
+  }
+
+  public static async pushCloudProfile(): Promise<void> {
+    const account = this.getAccount();
+    if (!account?.email) return;
+    try {
+      const profile = this.getProfile();
+      const careerStats = this.getCareerStats();
+      const passStatus = this.getHostPass();
+      await fetch("/api/auth/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: account.email,
+          name: profile.name,
+          avatar: profile.avatar,
+          careerStats,
+          passStatus,
+        }),
+      });
+    } catch {
+      // Non-fatal
+    }
+  }
+
   /**
    * Permanently wipes user identity, cloud tokens, and stored game data.
    * Required for Apple Guideline 5.1.1(v).
@@ -269,6 +362,7 @@ export class PlayerStorage {
       localStorage.removeItem(PLAYER_ID_KEY);
       localStorage.removeItem("chaos_device_fingerprint");
       localStorage.removeItem("chaos_player_achievements");
+      localStorage.removeItem("chaos_player_career_stats");
     } catch {
       // Ignore
     }
