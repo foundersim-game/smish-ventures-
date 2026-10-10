@@ -986,6 +986,17 @@ export default function ChaosMainApp() {
         roomCode: room.roomCode,
       });
 
+      // Achievement progress tracking
+      if (currentPlayer.initialVoteOptionId && currentPlayer.initialVoteOptionId !== optionId) {
+        PlayerStorage.recordAchievementProgress("instigator", 1, 5);
+      } else if (currentPlayer.initialVoteOptionId && currentPlayer.initialVoteOptionId === optionId) {
+        PlayerStorage.recordAchievementProgress("unshakable", 1, 5);
+      }
+      const allLocked = players.map((p) => (p.id === currentPlayer.id ? optionId : p.finalVoteOptionId)).filter(Boolean);
+      if (allLocked.length === players.length && players.length >= 2 && allLocked.every((v) => v === optionId)) {
+        PlayerStorage.recordAchievementProgress("same_brain", 1, 1);
+      }
+
       // Simulate bot final votes if any
       const botPlayers = players.filter(
         (p) =>
@@ -1114,6 +1125,11 @@ export default function ChaosMainApp() {
     setReceipts(compiled);
     if (res.missionResults && Array.isArray(res.missionResults)) {
       setMissionResults(res.missionResults);
+      const myMission = res.missionResults.find((m: { playerId: string; success?: boolean; completed?: boolean }) => m.playerId === currentPlayer.id);
+      const myReceipt = compiled?.receipts?.find((r) => r.playerId === currentPlayer.id);
+      if (myMission && (myMission.success || myMission.completed) && (!myReceipt || myReceipt.blameVotesReceived === 0)) {
+        PlayerStorage.recordAchievementProgress("ghost_saboteur", 1, 3);
+      }
     }
     return compiled;
   };
@@ -1133,6 +1149,15 @@ export default function ChaosMainApp() {
       const me = updated.players.find((p) => p.id === currentPlayer.id);
       if (me) setCurrentPlayer(me);
       if (updated.room.phase === "chaos_report") {
+        if (currentPlayer.isHost && updated.players.length >= 4) {
+          PlayerStorage.recordAchievementProgress("party_monarch", 1, 5);
+        }
+        if (updated.room.resourceState?.chaosScore && updated.room.resourceState.chaosScore >= 100) {
+          PlayerStorage.recordAchievementProgress("chaos_overlord", 1, 1);
+        }
+        if (updated.room.resourceState?.balance && updated.room.resourceState.balance >= 30000) {
+          PlayerStorage.recordAchievementProgress("high_roller", 1, 1);
+        }
         setView("chaos_report");
       }
     } catch (err: unknown) {
@@ -1144,6 +1169,9 @@ export default function ChaosMainApp() {
   const handleBuzzer = async (type: ReactionBuzzerType) => {
     if (!room || !currentPlayer) return;
     try {
+      if (type === "bullshit") {
+        PlayerStorage.recordAchievementProgress("buzzer_master", 1, 10);
+      }
       await ApiClient.sendAction(room.roomCode, currentPlayer.id, "TRIGGER_BUZZER", {
         buzzerType: type,
       });

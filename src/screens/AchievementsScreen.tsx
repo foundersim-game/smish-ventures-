@@ -27,29 +27,30 @@ interface AchievementsScreenProps {
   onOpenStore: () => void;
 }
 
-interface AchievementItem {
+export interface BaseAchievement {
   id: string;
   title: string;
   category: "chaos" | "loyalty" | "social" | "mastery";
   description: string;
   icon: string;
-  progress: number;
   total: number;
-  unlocked: boolean;
   xpReward: number;
   badgeColor: string;
 }
 
-const ACHIEVEMENTS: AchievementItem[] = [
+export interface AchievementItem extends BaseAchievement {
+  progress: number;
+  unlocked: boolean;
+}
+
+export const BASE_ACHIEVEMENTS: BaseAchievement[] = [
   {
     id: "instigator",
     title: "The Instigator",
     category: "chaos",
     description: "Successfully flipped the table vote during the Final Vote phase.",
     icon: "🔥",
-    progress: 4,
     total: 5,
-    unlocked: false,
     xpReward: 350,
     badgeColor: "from-rose-500 to-red-600",
   },
@@ -59,9 +60,7 @@ const ACHIEVEMENTS: AchievementItem[] = [
     category: "chaos",
     description: "Executed a secret mission without receiving a single blame vote.",
     icon: "🕵️",
-    progress: 3,
     total: 3,
-    unlocked: true,
     xpReward: 500,
     badgeColor: "from-purple-500 to-indigo-600",
   },
@@ -71,9 +70,7 @@ const ACHIEVEMENTS: AchievementItem[] = [
     category: "social",
     description: "Voted with 100% consensus alongside your squad in a round.",
     icon: "🧠",
-    progress: 1,
     total: 1,
-    unlocked: true,
     xpReward: 250,
     badgeColor: "from-cyan-500 to-blue-600",
   },
@@ -83,9 +80,7 @@ const ACHIEVEMENTS: AchievementItem[] = [
     category: "mastery",
     description: "Host 5 completed multiplayer games with at least 4 players.",
     icon: "👑",
-    progress: 3,
     total: 5,
-    unlocked: false,
     xpReward: 600,
     badgeColor: "from-amber-400 to-yellow-600",
   },
@@ -95,9 +90,7 @@ const ACHIEVEMENTS: AchievementItem[] = [
     category: "chaos",
     description: "Triggered a 100% maxed-out Chaos Meter on Halftime or Report.",
     icon: "💣",
-    progress: 1,
     total: 1,
-    unlocked: true,
     xpReward: 400,
     badgeColor: "from-fuchsia-500 to-pink-600",
   },
@@ -107,9 +100,7 @@ const ACHIEVEMENTS: AchievementItem[] = [
     category: "loyalty",
     description: "Refused to change your initial vote across 5 consecutive rounds.",
     icon: "🧱",
-    progress: 5,
     total: 5,
-    unlocked: true,
     xpReward: 300,
     badgeColor: "from-emerald-500 to-teal-600",
   },
@@ -119,9 +110,7 @@ const ACHIEVEMENTS: AchievementItem[] = [
     category: "social",
     description: "Called BULLSHIT right before the debate timer ran out.",
     icon: "🚨",
-    progress: 7,
     total: 10,
-    unlocked: false,
     xpReward: 200,
     badgeColor: "from-red-500 to-rose-700",
   },
@@ -131,9 +120,7 @@ const ACHIEVEMENTS: AchievementItem[] = [
     category: "mastery",
     description: "Preserved over $30,000 in squad balance through round 10.",
     icon: "💰",
-    progress: 1,
     total: 1,
-    unlocked: true,
     xpReward: 450,
     badgeColor: "from-amber-400 to-emerald-500",
   },
@@ -143,13 +130,35 @@ const ACHIEVEMENTS: AchievementItem[] = [
     category: "loyalty",
     description: "Resolved 3 sudden-death tie-breaker showdowns without blood.",
     icon: "🕊️",
-    progress: 2,
     total: 3,
-    unlocked: false,
     xpReward: 350,
     badgeColor: "from-blue-400 to-indigo-500",
   },
 ];
+
+interface RankTier {
+  level: number;
+  name: string;
+  minXp: number;
+  nextTierXp: number;
+  nextRankName: string;
+}
+
+const getRankFromXp = (xp: number): RankTier => {
+  if (xp >= 2500) {
+    return { level: 5, name: "Master Traitor", minXp: 2500, nextTierXp: 3500, nextRankName: "Chaos God" };
+  }
+  if (xp >= 1600) {
+    return { level: 4, name: "The Instigator", minXp: 1600, nextTierXp: 2500, nextRankName: "Master Traitor" };
+  }
+  if (xp >= 900) {
+    return { level: 3, name: "Squad Rebel", minXp: 900, nextTierXp: 1600, nextRankName: "The Instigator" };
+  }
+  if (xp >= 350) {
+    return { level: 2, name: "Table Shaker", minXp: 350, nextTierXp: 900, nextRankName: "Squad Rebel" };
+  }
+  return { level: 1, name: "Chaos Rookie", minXp: 0, nextTierXp: 350, nextRankName: "Table Shaker" };
+};
 
 export const AchievementsScreen: React.FC<AchievementsScreenProps> = ({
   onBack,
@@ -159,15 +168,34 @@ export const AchievementsScreen: React.FC<AchievementsScreenProps> = ({
 }) => {
   const profile = PlayerStorage.getProfile();
   const [selectedFilter, setSelectedFilter] = useState<"all" | "chaos" | "social" | "mastery">("all");
+  const [achievementsData] = useState(() => PlayerStorage.getAchievements());
 
-  const unlockedCount = ACHIEVEMENTS.filter((a) => a.unlocked).length;
-  const totalCount = ACHIEVEMENTS.length;
-  const totalXp = ACHIEVEMENTS.filter((a) => a.unlocked).reduce((sum, a) => sum + a.xpReward, 0);
+  const items: AchievementItem[] = BASE_ACHIEVEMENTS.map((base) => {
+    const record = achievementsData[base.id] || { progress: 0, unlocked: false };
+    const progress = Math.min(base.total, record.progress || 0);
+    const unlocked = Boolean(record.unlocked || progress >= base.total);
+    return {
+      ...base,
+      progress,
+      unlocked,
+    };
+  });
+
+  const unlockedCount = items.filter((a) => a.unlocked).length;
+  const totalCount = items.length;
+  const totalXp = items.filter((a) => a.unlocked).reduce((sum, a) => sum + a.xpReward, 0);
+
+  const rank = getRankFromXp(totalXp);
+  const currentTierBaseXp = rank.minXp;
+  const nextTierXp = rank.nextTierXp;
+  const xpInCurrentTier = Math.max(0, totalXp - currentTierBaseXp);
+  const tierSpan = Math.max(1, nextTierXp - currentTierBaseXp);
+  const progressPercent = Math.min(100, Math.round((xpInCurrentTier / tierSpan) * 100));
 
   const filteredAchievements =
     selectedFilter === "all"
-      ? ACHIEVEMENTS
-      : ACHIEVEMENTS.filter((a) => a.category === selectedFilter);
+      ? items
+      : items.filter((a) => a.category === selectedFilter);
 
   return (
     <div className="relative h-full max-h-[100dvh] w-full flex flex-col justify-between px-3.5 py-2 bg-[#090310] select-none overflow-hidden">
@@ -210,8 +238,8 @@ export const AchievementsScreen: React.FC<AchievementsScreenProps> = ({
                 <span className="text-[10px] font-black uppercase text-purple-300 tracking-wider block">
                   CHAOS RANK
                 </span>
-                <h3 className="font-display font-black text-white text-base leading-tight">
-                  LEVEL 4 • INSTIGATOR
+                <h3 className="font-display font-black text-white text-base leading-tight uppercase">
+                  LEVEL {rank.level} • {rank.name}
                 </h3>
               </div>
             </div>
@@ -227,13 +255,15 @@ export const AchievementsScreen: React.FC<AchievementsScreenProps> = ({
           {/* XP Progress Bar */}
           <div className="space-y-1">
             <div className="flex justify-between text-[10px] font-bold text-gray-300">
-              <span>Next Rank: Master Traitor</span>
-              <span>1,850 / 2,500 XP</span>
+              <span>Next Rank: {rank.nextRankName}</span>
+              <span>
+                {totalXp} / {rank.nextTierXp} XP
+              </span>
             </div>
             <div className="w-full h-2 rounded-full bg-black/50 overflow-hidden p-0.5 border border-purple-500/30">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-pink-500 via-amber-400 to-yellow-300 transition-all duration-500"
-                style={{ width: "74%" }}
+                style={{ width: `${progressPercent}%` }}
               />
             </div>
           </div>

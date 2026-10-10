@@ -6,10 +6,10 @@ export class MailerService {
   private static getTransporter(): Transporter | null {
     if (this.transporter) return this.transporter;
 
-    const host = process.env.SMTP_HOST;
+    const host = process.env.SMTP_HOST || "smtp.hostinger.com";
     const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
-    const port = Number(process.env.SMTP_PORT) || 587;
+    const port = Number(process.env.SMTP_PORT) || 465;
 
     if (!host || !user || !pass) {
       return null;
@@ -23,6 +23,8 @@ export class MailerService {
         user,
         pass,
       },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
     });
 
     return this.transporter;

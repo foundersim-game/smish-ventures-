@@ -222,6 +222,39 @@ export class PlayerStorage {
     }
   }
 
+  public static getAchievements(): Record<string, { progress: number; unlocked: boolean }> {
+    if (typeof window === "undefined") return {};
+    try {
+      const data = localStorage.getItem("chaos_player_achievements");
+      if (data) return JSON.parse(data);
+    } catch {
+      // Ignore
+    }
+    return {};
+  }
+
+  public static recordAchievementProgress(id: string, increment: number, target: number): boolean {
+    if (typeof window === "undefined") return false;
+    try {
+      const records = this.getAchievements();
+      const current = records[id] || { progress: 0, unlocked: false };
+      if (current.unlocked) return false;
+
+      const newProgress = Math.min(target, current.progress + increment);
+      const isNowUnlocked = newProgress >= target;
+
+      records[id] = {
+        progress: newProgress,
+        unlocked: isNowUnlocked,
+      };
+
+      localStorage.setItem("chaos_player_achievements", JSON.stringify(records));
+      return isNowUnlocked;
+    } catch {
+      return false;
+    }
+  }
+
   /**
    * Permanently wipes user identity, cloud tokens, and stored game data.
    * Required for Apple Guideline 5.1.1(v).
@@ -235,6 +268,7 @@ export class PlayerStorage {
       localStorage.removeItem(ACTIVE_SESSION_KEY);
       localStorage.removeItem(PLAYER_ID_KEY);
       localStorage.removeItem("chaos_device_fingerprint");
+      localStorage.removeItem("chaos_player_achievements");
     } catch {
       // Ignore
     }
