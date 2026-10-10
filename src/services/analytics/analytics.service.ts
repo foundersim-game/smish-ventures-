@@ -89,8 +89,10 @@ export class AnalyticsService {
     // 3. Dispatch to Google Analytics (gtag) if present on window
     if (typeof window !== "undefined") {
       const win = window as any;
-      if (win.gtag) {
+      if (typeof win.gtag === "function") {
         win.gtag("event", name, eventPayload);
+      } else if (Array.isArray(win.dataLayer)) {
+        win.dataLayer.push(eventPayload);
       }
       // 4. Dispatch to PostHog if present on window
       if (win.posthog) {

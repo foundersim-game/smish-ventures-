@@ -23,6 +23,8 @@ export const viewport: Viewport = {
   themeColor: "#04060A",
 };
 
+const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -32,6 +34,29 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="stylesheet" href="/style.css" />
+        {GA_MEASUREMENT_ID && (
+          <>
+            <script
+              async
+              src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+            />
+            <script
+              id="google-analytics-init"
+              dangerouslySetInnerHTML={{
+                __html: `
+                  window.dataLayer = window.dataLayer || [];
+                  function gtag(){dataLayer.push(arguments);}
+                  window.gtag = gtag;
+                  gtag("js", new Date());
+                  gtag("config", "${GA_MEASUREMENT_ID}", {
+                    page_path: window.location.pathname,
+                    send_page_view: true
+                  });
+                `,
+              }}
+            />
+          </>
+        )}
       </head>
       <body className="antialiased bg-[#04060A] text-white min-h-screen">
         {children}
