@@ -15,17 +15,19 @@ export interface AdMobConfig {
   isTesting?: boolean;
 }
 
-// Google AdMob Standard Fallback IDs
+// Live Production Google AdMob Unit IDs
 const GOOGLE_ADMOB_DEFAULT_IDS = {
   android: {
-    banner: "ca-app-pub-3940256099942544/6300978111",
-    interstitial: "ca-app-pub-3940256099942544/1033173712",
-    rewarded: "ca-app-pub-3940256099942544/5224354917",
+    appId: "ca-app-pub-5887294790874355~8115758695",
+    banner: "ca-app-pub-5887294790874355/6831520628",
+    interstitial: "ca-app-pub-5887294790874355/1579193940",
+    rewarded: "ca-app-pub-5887294790874355/6639948935",
   },
   ios: {
-    banner: "ca-app-pub-3940256099942544/2934735716",
-    interstitial: "ca-app-pub-3940256099942544/4411468910",
-    rewarded: "ca-app-pub-3940256099942544/1712485313",
+    appId: "ca-app-pub-5887294790874355~6602446603",
+    banner: "ca-app-pub-5887294790874355/9452891091",
+    interstitial: "ca-app-pub-5887294790874355/5901582332",
+    rewarded: "ca-app-pub-5887294790874355/8336173989",
   },
 };
 
@@ -77,16 +79,7 @@ export class AdMobService {
     if (process.env.NEXT_PUBLIC_ADMOB_IS_TESTING !== undefined) {
       return process.env.NEXT_PUBLIC_ADMOB_IS_TESTING === "true";
     }
-    // If real custom ad units are provided in env, use real live ads
-    if (
-      process.env.NEXT_PUBLIC_ADMOB_BANNER_ID_IOS ||
-      process.env.NEXT_PUBLIC_ADMOB_BANNER_ID_ANDROID ||
-      process.env.NEXT_PUBLIC_ADMOB_INTERSTITIAL_ID_IOS ||
-      process.env.NEXT_PUBLIC_ADMOB_INTERSTITIAL_ID_ANDROID
-    ) {
-      return false;
-    }
-    return process.env.NODE_ENV !== "production";
+    return false;
   }
 
   public static async initialize(config?: AdMobConfig): Promise<void> {
