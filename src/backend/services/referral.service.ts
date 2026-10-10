@@ -148,4 +148,67 @@ export class ReferralService {
       isUnlocked: record.isUnlocked,
     };
   }
+
+  // Standalone user-level referral store (for app downloads without room)
+  private static userReferrals = new Map<string, {
+    refToken: string;
+    referrerPlayerId: string;
+    verifiedInstalls: string[];
+    claimedWelcomeBonus: boolean;
+  }>();
+
+  /**
+   * Records a standalone native app install from a referral link.
+   * Enforces:
+   * 1. Anti-self-referral (cannot refer yourself)
+   * 2. Anti-duplicate install (same device cannot trigger multiple times)
+   * 3. 1-Time Lifetime Welcome Bonus Cap (referrer only gets 1 free pass ever)
+   */
+  public static async recordInstall(params: {
+    refToken: string;
+    newPlayerId: string;
+    visitorFingerprint: string;
+    visitorIp?: string;
+  }): Promise<{ isNewVerified: boolean; rewardGranted: boolean; message: string }> {
+    const token = params.refToken.toUpperCase().trim();
+    let record = this.userReferrals.get(token);
+
+    if (!record) {
+      record = {
+        refToken: token,
+        referrerPlayerId: token.replace(/^REF-/, ""),
+        verifiedInstalls: [],
+        claimedWelcomeBonus: false,
+      };
+      this.userReferrals.set(token, record);
+    }
+
+    // 1. Anti-self-referral
+    if (params.newPlayerId === record.referrerPlayerId) {
+      return { isNewVerified: false, rewardGranted: false, message: "Self-referral not allowed." };
+    }
+
+    // 2. Anti-duplicate install
+    if (record.verifiedInstalls.includes(params.visitorFingerprint)) {
+      return { isNewVerified: false, rewardGranted: false, message: "Device already attributed." };
+    }
+
+    record.verifiedInstalls.push(params.visitorFingerprint);
+
+    // 3. 1-Time Lifetime Welcome Pass Cap
+    if (!record.claimedWelcomeBonus) {
+      record.claimedWelcomeBonus = true;
+      return {
+        isNewVerified: true,
+        rewardGranted: true,
+        message: "Referral verified! 1 Free Party Pass unlocked for referrer (1-time welcome gift).",
+      };
+    }
+
+    return {
+      isNewVerified: true,
+      rewardGranted: false,
+      message: "Referral counted, but lifetime 1-bonus cap is already reached.",
+    };
+  }
 }

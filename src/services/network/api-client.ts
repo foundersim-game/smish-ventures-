@@ -140,4 +140,21 @@ export class ApiClient {
     }
     return [];
   }
+
+  public static async trackInstallReferral(params: {
+    refToken: string;
+    newPlayerId: string;
+    visitorFingerprint: string;
+  }): Promise<{ success: boolean; rewardGranted?: boolean; message?: string }> {
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/api/referrals`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "install", ...params }),
+      });
+      return await res.json();
+    } catch {
+      return { success: false };
+    }
+  }
 }

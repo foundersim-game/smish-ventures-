@@ -179,8 +179,37 @@ export default function ChaosMainApp() {
       const params = new URLSearchParams(window.location.search);
       const code = params.get("join");
       const ref = params.get("ref");
+
+      const reportInstallReferral = (token: string) => {
+        if (!token) return;
+        try {
+          if (!localStorage.getItem("chaos_install_reported")) {
+            localStorage.setItem("chaos_install_reported", "true");
+            ApiClient.trackInstallReferral({
+              refToken: token,
+              newPlayerId: PlayerStorage.getOrCreatePlayerId(),
+              visitorFingerprint: PlayerStorage.getDeviceId(),
+            }).then((res) => {
+              if (res?.rewardGranted) {
+                PlayerStorage.activatePass("welcome_referral", 1);
+              }
+            }).catch(() => {});
+          }
+        } catch {
+          // Ignore
+        }
+      };
+
       if (ref) {
         sessionStorage.setItem("chaos_ref_token", ref);
+        reportInstallReferral(ref);
+      } else if (typeof navigator !== "undefined" && navigator.clipboard?.readText) {
+        navigator.clipboard.readText().then((txt) => {
+          if (txt && txt.startsWith("CHAOS-REF:")) {
+            const parsed = txt.replace("CHAOS-REF:", "").trim();
+            if (parsed) reportInstallReferral(parsed);
+          }
+        }).catch(() => {});
       }
       if (code) {
         setPrefilledJoinCode(code.toUpperCase());

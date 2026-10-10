@@ -36,6 +36,19 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || undefined;
+
+    // Handle standalone native app install referral
+    if (body.type === "install" && body.refToken && body.visitorFingerprint) {
+      const result = await ReferralService.recordInstall({
+        refToken: body.refToken,
+        newPlayerId: body.newPlayerId || "guest",
+        visitorFingerprint: body.visitorFingerprint,
+        visitorIp: ip,
+      });
+      return NextResponse.json({ success: true, ...result });
+    }
+
     const { refToken, roomCode, joiningPlayerId, visitorFingerprint } = body;
 
     if (!roomCode || !joiningPlayerId || !visitorFingerprint) {
@@ -44,8 +57,6 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-
-    const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || undefined;
 
     const result = await ReferralService.recordVerifiedJoin({
       refToken,

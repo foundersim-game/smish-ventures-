@@ -200,6 +200,39 @@ export class PlayerStorage {
     });
   }
 
+  public static getReferralCode(): string {
+    if (typeof window === "undefined") return "REF-HOST";
+    try {
+      let code = localStorage.getItem("chaos_referral_code");
+      if (!code) {
+        const id = this.getOrCreatePlayerId();
+        code = `REF-${id.substring(0, 6).toUpperCase()}`;
+        localStorage.setItem("chaos_referral_code", code);
+      }
+      return code;
+    } catch {
+      return "REF-HOST";
+    }
+  }
+
+  public static hasClaimedReferralReward(): boolean {
+    if (typeof window === "undefined") return false;
+    try {
+      return localStorage.getItem("chaos_referral_reward_claimed") === "true";
+    } catch {
+      return false;
+    }
+  }
+
+  public static setReferralRewardClaimed(): void {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem("chaos_referral_reward_claimed", "true");
+    } catch {
+      // Ignore
+    }
+  }
+
   public static getAccount(): UserAccount | null {
     if (typeof window === "undefined") return null;
     try {
