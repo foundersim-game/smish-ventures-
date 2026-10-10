@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -15,6 +15,7 @@ import { ScenarioRegistry } from "../backend/data/scenarios";
 import { ChaosButton } from "../components/atoms/ChaosButton";
 import { audio } from "../services/audio/audio-manager";
 import { haptics } from "../services/haptics/haptics-manager";
+import { ApiClient } from "../services/network/api-client";
 
 interface ScenarioSelectScreenProps {
   mode?: GameMode;
@@ -49,13 +50,37 @@ export const ScenarioSelectScreen: React.FC<ScenarioSelectScreenProps> = ({
   onSelectScenario,
 }) => {
   const isCouples = mode === "couples";
-  const defaultScenario = ScenarioRegistry.getDefaultScenarioForMode(mode);
 
+  // All scenarios for the selected mode (ordered with newly added drops at the top)
+  const [scenarios, setScenarios] = useState<ScenarioDefinition[]>(() =>
+    ScenarioRegistry.getScenariosForMode(mode)
+  );
+
+  const defaultScenario = scenarios[0] || ScenarioRegistry.getDefaultScenarioForMode(mode);
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>(defaultScenario.id);
   const [previewScenario, setPreviewScenario] = useState<ScenarioDefinition | null>(null);
 
-  // All scenarios for the selected mode (all free & unlocked)
-  const scenarios = ScenarioRegistry.getScenariosForMode(mode);
+  useEffect(() => {
+    // Keep local scenarios in sync and refresh with remote drops
+    const fresh = ScenarioRegistry.getScenariosForMode(mode);
+    setScenarios(fresh);
+    if (!fresh.some((s) => s.id === selectedScenarioId) && fresh[0]) {
+      setSelectedScenarioId(fresh[0].id);
+    }
+
+    ApiClient.getScenarios()
+      .then((dynamicDrops) => {
+        if (dynamicDrops && dynamicDrops.length > 0) {
+          ScenarioRegistry.registerDynamic(dynamicDrops);
+          const updated = ScenarioRegistry.getScenariosForMode(mode);
+          setScenarios(updated);
+          if (!updated.some((s) => s.id === selectedScenarioId) && updated[0]) {
+            setSelectedScenarioId(updated[0].id);
+          }
+        }
+      })
+      .catch(() => {});
+  }, [mode]);
 
   const currentSelected =
     scenarios.find((s) => s.id === selectedScenarioId) ||
@@ -171,26 +196,32 @@ export const ScenarioSelectScreen: React.FC<ScenarioSelectScreenProps> = ({
                     }
                   `}
                 >
-                  {/* Top Header Row: Vibe Tag & Preview Button */}
+                  {/* Top Header Row: Badges (NEW DROP & Vibe Tag) & Preview Button */}
                   <div className="flex items-center justify-between gap-2 mb-1.5">
-                    {sc.vibeTag ? (
-                      <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-display font-black uppercase tracking-wider border shadow-sm ${getVibeBadgeStyle(
-                          sc.vibeColor
-                        )}`}
-                      >
-                        <span>{sc.vibeTag}</span>
-                      </span>
-                    ) : (
-                      <div />
-                    )}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {sc.isNew && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-display font-black uppercase tracking-wider bg-gradient-to-r from-amber-500/30 via-yellow-500/25 to-amber-500/30 text-yellow-300 border border-yellow-400/60 shadow-[0_0_12px_rgba(250,204,21,0.35)] animate-pulse">
+                          <Sparkles className="w-2.5 h-2.5 text-yellow-400 fill-yellow-400" />
+                          <span>NEW DROP</span>
+                        </span>
+                      )}
+                      {sc.vibeTag && (
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-display font-black uppercase tracking-wider border shadow-sm ${getVibeBadgeStyle(
+                            sc.vibeColor
+                          )}`}
+                        >
+                          <span>{sc.vibeTag}</span>
+                        </span>
+                      )}
+                    </div>
 
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         handleOpenPreview(sc);
                       }}
-                      className="text-[10px] text-purple-300 hover:text-white font-bold flex items-center gap-0.5 bg-purple-900/50 px-2 py-0.5 rounded-lg border border-purple-700/40"
+                      className="text-[10px] text-purple-300 hover:text-white font-bold flex items-center gap-0.5 bg-purple-900/50 px-2 py-0.5 rounded-lg border border-purple-700/40 active:scale-95 transition-transform"
                     >
                       <span>Preview</span>
                       <ChevronRight className="w-3 h-3" />
@@ -284,6 +315,12 @@ export const ScenarioSelectScreen: React.FC<ScenarioSelectScreenProps> = ({
               } relative overflow-hidden`}
             >
               <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                {previewScenario.isNew && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-display font-black uppercase tracking-wider bg-gradient-to-r from-amber-500/30 via-yellow-500/25 to-amber-500/30 text-yellow-300 border border-yellow-400/60 shadow-[0_0_12px_rgba(250,204,21,0.35)] animate-pulse">
+                    <Sparkles className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                    <span>NEW DROP</span>
+                  </span>
+                )}
                 {previewScenario.vibeTag && (
                   <span
                     className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-display font-black uppercase tracking-wider border shadow-sm ${getVibeBadgeStyle(

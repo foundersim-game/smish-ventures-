@@ -17,11 +17,21 @@ export async function GET() {
       .from("scenarios")
       .select("id, data, is_active, release_week")
       .eq("is_active", true)
-      .order("release_week", { ascending: true });
+      .order("release_week", { ascending: false });
 
     if (!error && Array.isArray(data)) {
       const dynamicList = data
-        .map((row) => (row.data ? (row.data as ScenarioDefinition) : null))
+        .map((row) => {
+          if (!row.data) return null;
+          const sc = { ...row.data } as ScenarioDefinition;
+          if (row.release_week !== undefined && !sc.releaseWeek) {
+            sc.releaseWeek = row.release_week;
+          }
+          if (sc.isNew === undefined) {
+            sc.isNew = true;
+          }
+          return sc;
+        })
         .filter(Boolean) as ScenarioDefinition[];
 
       if (dynamicList.length > 0) {
@@ -74,6 +84,11 @@ export async function POST(req: Request) {
       );
     }
 
+    // Default to newly added
+    if (scenario.isNew === undefined) {
+      scenario.isNew = true;
+    }
+
     // 1. Register in memory
     ScenarioRegistry.registerDynamic([scenario as ScenarioDefinition]);
 
@@ -85,6 +100,7 @@ export async function POST(req: Request) {
         title: scenario.title,
         category: scenario.category || "friends",
         data: scenario,
+        release_week: scenario.releaseWeek || 999,
         is_active: true,
         updated_at: new Date().toISOString(),
       });

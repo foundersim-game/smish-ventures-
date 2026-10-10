@@ -54,6 +54,10 @@ export class ScenarioRegistry {
   public static registerDynamic(scenarios: ScenarioDefinition[]): void {
     for (const s of scenarios) {
       if (s && s.id) {
+        if (s.isNew === undefined) {
+          s.isNew = true;
+        }
+        s.isDynamic = true;
         this.dynamicStore.set(s.id, s);
       }
     }
@@ -61,6 +65,7 @@ export class ScenarioRegistry {
 
   /**
    * Retrieves all available scenarios (static catalog + weekly dynamic drops).
+   * Dynamic / Newly added drops appear at the beginning of the list.
    */
   public static getAll(): ScenarioDefinition[] {
     const list = [...SCENARIO_CATALOG];
@@ -69,7 +74,7 @@ export class ScenarioRegistry {
       if (idx >= 0) {
         list[idx] = dyn;
       } else {
-        list.push(dyn);
+        list.unshift(dyn);
       }
     }
     return list;
@@ -86,18 +91,29 @@ export class ScenarioRegistry {
   /**
    * Retrieves scenarios filtered strictly by GameMode (party vs couples)
    * and optionally by monetization tier (free vs premium).
+   * Automatically sorts Newly Added (isNew / dynamic drops) to the top!
    */
   public static getScenariosForMode(
     mode: GameMode,
     tier?: "free" | "premium"
   ): ScenarioDefinition[] {
     const isCouples = mode === "couples";
-    return this.getAll().filter((s) => {
+    const filtered = this.getAll().filter((s) => {
       const matchesMode = isCouples ? s.category === "couples" : s.category !== "couples";
       if (!matchesMode) return false;
       if (tier === "free") return !s.isPremium;
       if (tier === "premium") return s.isPremium;
       return true;
+    });
+
+    // Bring Newly Added & New Drops to the top
+    return filtered.sort((a, b) => {
+      if (a.isNew && !b.isNew) return -1;
+      if (!a.isNew && b.isNew) return 1;
+      if ((b.releaseWeek || 0) !== (a.releaseWeek || 0)) {
+        return (b.releaseWeek || 0) - (a.releaseWeek || 0);
+      }
+      return 0;
     });
   }
 

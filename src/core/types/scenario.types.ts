@@ -68,4 +68,7 @@ export interface ScenarioDefinition {
     chaosScore?: number;
   };
   rounds: ScenarioRound[];
+  isNew?: boolean;
+  releaseWeek?: number;
+  isDynamic?: boolean;
 }
