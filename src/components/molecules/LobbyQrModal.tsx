@@ -18,14 +18,19 @@ export const LobbyQrModal: React.FC<LobbyQrModalProps> = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // Pure mobile deep link scheme: opens the CHAOS mobile app directly
-  const deepLink = `chaos://join?code=${roomCode}`;
+  // Universal join link: works in camera scanner, WhatsApp, iMessage, and native app
+  const joinUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}${
+          window.location.pathname.startsWith("/chaos") ? "/chaos" : ""
+        }?join=${roomCode}`
+      : `https://www.smishventures.com/chaos?join=${roomCode}`;
 
   useEffect(() => {
     if (isOpen && canvasRef.current && roomCode) {
       QRCode.toCanvas(
         canvasRef.current,
-        deepLink,
+        joinUrl,
         {
           width: 220,
           margin: 1.5,
@@ -39,7 +44,7 @@ export const LobbyQrModal: React.FC<LobbyQrModalProps> = ({
         }
       );
     }
-  }, [isOpen, roomCode, deepLink]);
+  }, [isOpen, roomCode, joinUrl]);
 
   if (!isOpen) return null;
 
@@ -58,13 +63,13 @@ export const LobbyQrModal: React.FC<LobbyQrModalProps> = ({
   const handleShare = async () => {
     audio.play("click");
     haptics.trigger("medium");
-    const shareText = `🎮 Join my CHAOS game!\nRoom Code: ${roomCode}\nOpen CHAOS: ${deepLink}`;
+    const shareText = `🔥 Join my CHAOS game!\nRoom Code: ${roomCode}\nTap to join: ${joinUrl}`;
     if (navigator.share) {
       try {
         await navigator.share({
           title: "Join my CHAOS game!",
           text: shareText,
-          url: deepLink,
+          url: joinUrl,
         });
       } catch {
         handleCopyCode();

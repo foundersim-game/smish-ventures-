@@ -118,13 +118,14 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
   const handleShare = async () => {
     audio.play("click");
     haptics.trigger("medium");
-    const shareText = `🎮 Join my CHAOS game!\nRoom Code: ${room.roomCode}\nOpen CHAOS: chaos://join?code=${room.roomCode}`;
+    const joinUrl = getJoinUrl() || `https://www.smishventures.com/chaos?join=${room.roomCode}`;
+    const shareText = `🔥 Join my CHAOS game!\nRoom Code: ${room.roomCode}\nTap to join: ${joinUrl}`;
     if (navigator.share) {
       try {
         await navigator.share({
           title: "Join my CHAOS game!",
           text: shareText,
-          url: `chaos://join?code=${room.roomCode}`,
+          url: joinUrl,
         });
       } catch {
         handleCopyCode();
