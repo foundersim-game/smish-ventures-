@@ -1,4 +1,9 @@
 import { Capacitor } from "@capacitor/core";
+import {
+  AdMob,
+  BannerAdSize,
+  BannerAdPosition,
+} from "@capacitor-community/admob";
 
 export interface AdMobConfig {
   androidBannerId?: string;
@@ -10,9 +15,8 @@ export interface AdMobConfig {
   isTesting?: boolean;
 }
 
-// Official Google AdMob Test Ad Unit IDs
-// NEVER USE LIVE ADS DURING DEVELOPMENT OR TESTING (Google AdMob policy violation)
-const GOOGLE_ADMOB_TEST_IDS = {
+// Google AdMob Standard Fallback IDs
+const GOOGLE_ADMOB_DEFAULT_IDS = {
   android: {
     banner: "ca-app-pub-3940256099942544/6300978111",
     interstitial: "ca-app-pub-3940256099942544/1033173712",
@@ -30,25 +34,80 @@ export class AdMobService {
   private static isAdFreeActive = false;
   private static isBannerVisible = false;
 
+  private static getBannerId(platform: string): string {
+    if (platform === "ios") {
+      return (
+        process.env.NEXT_PUBLIC_ADMOB_BANNER_ID_IOS ||
+        GOOGLE_ADMOB_DEFAULT_IDS.ios.banner
+      );
+    }
+    return (
+      process.env.NEXT_PUBLIC_ADMOB_BANNER_ID_ANDROID ||
+      GOOGLE_ADMOB_DEFAULT_IDS.android.banner
+    );
+  }
+
+  private static getInterstitialId(platform: string): string {
+    if (platform === "ios") {
+      return (
+        process.env.NEXT_PUBLIC_ADMOB_INTERSTITIAL_ID_IOS ||
+        GOOGLE_ADMOB_DEFAULT_IDS.ios.interstitial
+      );
+    }
+    return (
+      process.env.NEXT_PUBLIC_ADMOB_INTERSTITIAL_ID_ANDROID ||
+      GOOGLE_ADMOB_DEFAULT_IDS.android.interstitial
+    );
+  }
+
+  private static getRewardedId(platform: string): string {
+    if (platform === "ios") {
+      return (
+        process.env.NEXT_PUBLIC_ADMOB_REWARDED_ID_IOS ||
+        GOOGLE_ADMOB_DEFAULT_IDS.ios.rewarded
+      );
+    }
+    return (
+      process.env.NEXT_PUBLIC_ADMOB_REWARDED_ID_ANDROID ||
+      GOOGLE_ADMOB_DEFAULT_IDS.android.rewarded
+    );
+  }
+
+  private static isTestingMode(): boolean {
+    if (process.env.NEXT_PUBLIC_ADMOB_IS_TESTING !== undefined) {
+      return process.env.NEXT_PUBLIC_ADMOB_IS_TESTING === "true";
+    }
+    // If real custom ad units are provided in env, use real live ads
+    if (
+      process.env.NEXT_PUBLIC_ADMOB_BANNER_ID_IOS ||
+      process.env.NEXT_PUBLIC_ADMOB_BANNER_ID_ANDROID ||
+      process.env.NEXT_PUBLIC_ADMOB_INTERSTITIAL_ID_IOS ||
+      process.env.NEXT_PUBLIC_ADMOB_INTERSTITIAL_ID_ANDROID
+    ) {
+      return false;
+    }
+    return process.env.NODE_ENV !== "production";
+  }
+
   public static async initialize(config?: AdMobConfig): Promise<void> {
     if (this.isInitialized) return;
 
-    const platform = Capacitor.getPlatform();
-    console.log(`[AdMobService] Initializing Google AdMob on platform: ${platform}`);
-
     if (Capacitor.isNativePlatform()) {
       try {
-        const win = window as any;
-        if (win.AdMob) {
-          await win.AdMob.initialize({
-            requestTrackingAuthorization: true,
-            testingDevices: config?.isTesting !== false ? ["EMULATOR"] : undefined,
-            initializeForTesting: config?.isTesting !== false,
-          });
-          console.log("[AdMobService] Google AdMob SDK initialized successfully.");
+        const isTesting = config?.isTesting ?? this.isTestingMode();
+        if (Capacitor.getPlatform() === "ios") {
+          try {
+            await AdMob.requestTrackingAuthorization();
+          } catch {
+            // ATT request dismissed or not available
+          }
         }
+        await AdMob.initialize({
+          initializeForTesting: isTesting,
+        });
+        console.log("[AdMobService] Real Google AdMob SDK initialized.");
       } catch (err) {
-        console.warn("[AdMobService] Error initializing native AdMob plugin:", err);
+        console.warn("[AdMobService] Error initializing native AdMob:", err);
       }
     }
 
@@ -67,37 +126,30 @@ export class AdMobService {
   }
 
   /**
-   * Shows a sticky bottom banner ad.
+   * Shows a native sticky bottom banner ad via Google AdMob.
    */
   public static async showBanner(): Promise<void> {
     if (this.isAdFreeActive) {
-      console.log("[AdMobService] Suppressing banner: Room is Ad-Free.");
+      return;
+    }
+
+    if (!Capacitor.isNativePlatform()) {
       return;
     }
 
     const platform = Capacitor.getPlatform();
-    if (!Capacitor.isNativePlatform()) {
-      // In web browser, handled by responsive DOM banner slot
-      return;
-    }
+    const adId = this.getBannerId(platform);
+    const isTesting = this.isTestingMode();
 
     try {
-      const win = window as any;
-      if (win.AdMob) {
-        const adId =
-          platform === "ios"
-            ? GOOGLE_ADMOB_TEST_IDS.ios.banner
-            : GOOGLE_ADMOB_TEST_IDS.android.banner;
-
-        await win.AdMob.showBanner({
-          adId,
-          adSize: "BANNER",
-          position: "BOTTOM_CENTER",
-          margin: 0,
-          isTesting: true,
-        });
-        this.isBannerVisible = true;
-      }
+      await AdMob.showBanner({
+        adId,
+        adSize: BannerAdSize.BANNER,
+        position: BannerAdPosition.BOTTOM_CENTER,
+        margin: 0,
+        isTesting,
+      });
+      this.isBannerVisible = true;
     } catch (err) {
       console.warn("[AdMobService] Failed to show native banner:", err);
     }
@@ -110,13 +162,10 @@ export class AdMobService {
     if (!Capacitor.isNativePlatform()) return;
 
     try {
-      const win = window as any;
-      if (win.AdMob) {
-        await win.AdMob.hideBanner();
-        this.isBannerVisible = false;
-      }
+      await AdMob.hideBanner();
+      this.isBannerVisible = false;
     } catch (err) {
-      console.warn("[AdMobService] Failed to hide banner:", err);
+      console.warn("[AdMobService] Failed to hide native banner:", err);
     }
   }
 
@@ -127,19 +176,14 @@ export class AdMobService {
     if (this.isAdFreeActive || !Capacitor.isNativePlatform()) return;
 
     const platform = Capacitor.getPlatform();
-    try {
-      const win = window as any;
-      if (win.AdMob) {
-        const adId =
-          platform === "ios"
-            ? GOOGLE_ADMOB_TEST_IDS.ios.interstitial
-            : GOOGLE_ADMOB_TEST_IDS.android.interstitial;
+    const adId = this.getInterstitialId(platform);
+    const isTesting = this.isTestingMode();
 
-        await win.AdMob.prepareInterstitial({
-          adId,
-          isTesting: true,
-        });
-      }
+    try {
+      await AdMob.prepareInterstitial({
+        adId,
+        isTesting,
+      });
     } catch (err) {
       console.warn("[AdMobService] Failed to prepare interstitial:", err);
     }
@@ -150,57 +194,45 @@ export class AdMobService {
    */
   public static async showInterstitial(): Promise<boolean> {
     if (this.isAdFreeActive) {
-      console.log("[AdMobService] Suppressing interstitial: Room is Ad-Free.");
       return false;
     }
 
     if (!Capacitor.isNativePlatform()) {
-      // In web mode, a 5-second sponsor card is displayed by the app
       return true;
     }
 
     try {
-      const win = window as any;
-      if (win.AdMob) {
-        await win.AdMob.showInterstitial();
-        return true;
-      }
+      await AdMob.showInterstitial();
+      return true;
     } catch (err) {
       console.warn("[AdMobService] Failed to show interstitial:", err);
+      return false;
     }
-    return false;
   }
 
   /**
-   * Shows a rewarded video ad (e.g. for opt-in "Reveal Accuser" peek).
+   * Shows a rewarded video ad.
    */
   public static async showRewarded(): Promise<boolean> {
     if (this.isAdFreeActive) {
-      return true; // Instantly granted for VIP rooms
-    }
-
-    const platform = Capacitor.getPlatform();
-    if (!Capacitor.isNativePlatform()) {
-      // In web fallback, simulate 3-second delay
-      await new Promise((resolve) => setTimeout(resolve, 3000));
       return true;
     }
 
-    try {
-      const win = window as any;
-      if (win.AdMob) {
-        const adId =
-          platform === "ios"
-            ? GOOGLE_ADMOB_TEST_IDS.ios.rewarded
-            : GOOGLE_ADMOB_TEST_IDS.android.rewarded;
+    if (!Capacitor.isNativePlatform()) {
+      return true;
+    }
 
-        await win.AdMob.prepareRewardVideoAd({ adId, isTesting: true });
-        const result = await win.AdMob.showRewardVideoAd();
-        return Boolean(result);
-      }
+    const platform = Capacitor.getPlatform();
+    const adId = this.getRewardedId(platform);
+    const isTesting = this.isTestingMode();
+
+    try {
+      await AdMob.prepareRewardVideoAd({ adId, isTesting });
+      const result = await AdMob.showRewardVideoAd();
+      return Boolean(result);
     } catch (err) {
       console.warn("[AdMobService] Failed to show rewarded ad:", err);
+      return false;
     }
-    return false;
   }
 }

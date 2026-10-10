@@ -16,6 +16,7 @@ import { HowToPlayModal } from "../components/organisms/HowToPlayModal";
 import { PlayerProfileModal } from "../components/organisms/PlayerProfileModal";
 import { HostPassModal } from "../components/organisms/HostPassModal";
 import { PlayerStorage, StoredProfile, ActiveSession } from "../services/storage/player-storage";
+import { BottomNavigationDock } from "../components/molecules/BottomNavigationDock";
 import { audio } from "../services/audio/audio-manager";
 import { haptics } from "../services/haptics/haptics-manager";
 
@@ -232,58 +233,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </button>
       </div>
 
-      {/* Bottom Navigation Dock (Matching Screen_1.png - full page routing) */}
-      <footer className="relative z-10 w-full max-w-sm mx-auto px-4 pb-3 pt-2 flex-shrink-0">
-        <div className="w-full rounded-3xl bg-[#14062B]/90 border border-purple-500/25 backdrop-blur-xl px-3 py-2 flex items-center justify-around shadow-2xl">
-          <button
-            onClick={() => {
-              audio.play("click");
-            }}
-            className="flex flex-col items-center text-white font-semibold group cursor-pointer"
-          >
-            <BarChart3 className="w-5 h-5 text-[#FF2A6D] mb-0.5 group-hover:scale-110 transition-transform" />
-            <span className="text-[10px] tracking-wide text-white">Home</span>
-          </button>
-
-          <button
-            onClick={() => {
-              audio.play("click");
-              haptics.trigger("light");
-              if (onOpenProfile) onOpenProfile();
-              else setShowProfileModal(true);
-            }}
-            className="flex flex-col items-center text-white/60 hover:text-white transition-colors cursor-pointer group"
-          >
-            <User className="w-5 h-5 text-white/60 mb-0.5 group-hover:text-white" />
-            <span className="text-[10px] tracking-wide">My Player</span>
-          </button>
-
-          <button
-            onClick={() => {
-              audio.play("click");
-              haptics.trigger("light");
-              if (onOpenAchievements) onOpenAchievements();
-            }}
-            className="flex flex-col items-center text-white/60 hover:text-white transition-colors cursor-pointer group"
-          >
-            <Trophy className="w-5 h-5 text-white/60 mb-0.5 group-hover:text-white" />
-            <span className="text-[10px] tracking-wide">Achievements</span>
-          </button>
-
-          <button
-            onClick={() => {
-              audio.play("click");
-              haptics.trigger("light");
-              if (onOpenStore) onOpenStore();
-              else setShowHostPassModal(true);
-            }}
-            className="flex flex-col items-center text-white/60 hover:text-white transition-colors cursor-pointer group"
-          >
-            <ShoppingCart className="w-5 h-5 text-white/60 mb-0.5 group-hover:text-white" />
-            <span className="text-[10px] tracking-wide">Store</span>
-          </button>
-        </div>
-      </footer>
+      {/* Bottom Navigation Dock */}
+      <BottomNavigationDock
+        activeTab="home"
+        onNavigate={(tab) => {
+          if (tab === "player") {
+            if (onOpenProfile) onOpenProfile();
+            else setShowProfileModal(true);
+          } else if (tab === "achievements") {
+            if (onOpenAchievements) onOpenAchievements();
+          } else if (tab === "store") {
+            if (onOpenStore) onOpenStore();
+            else setShowHostPassModal(true);
+          }
+        }}
+      />
 
       {/* Modals */}
       <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />

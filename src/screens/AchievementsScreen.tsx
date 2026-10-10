@@ -17,6 +17,7 @@ import {
   ShoppingCart,
 } from "lucide-react";
 import { PlayerStorage } from "../services/storage/player-storage";
+import { BottomNavigationDock } from "../components/molecules/BottomNavigationDock";
 import { audio } from "../services/audio/audio-manager";
 import { haptics } from "../services/haptics/haptics-manager";
 
@@ -360,53 +361,15 @@ export const AchievementsScreen: React.FC<AchievementsScreenProps> = ({
         </div>
       </div>
 
-      {/* Bottom Frosted Glass Dock */}
-      <footer className="relative z-20 w-full max-w-sm mx-auto px-4 pb-2 pt-1 flex-shrink-0">
-        <div className="w-full bg-[#1A0B2E]/90 backdrop-blur-md rounded-2xl border border-purple-500/30 px-3 py-2 flex items-center justify-around shadow-[0_8px_32px_rgba(0,0,0,0.6)]">
-          <button
-            onClick={() => {
-              audio.play("click");
-              onOpenHome();
-            }}
-            className="flex flex-col items-center text-white/60 hover:text-white transition-colors cursor-pointer group"
-          >
-            <BarChart3 className="w-5 h-5 text-white/60 mb-0.5 group-hover:text-white" />
-            <span className="text-[10px] tracking-wide">Home</span>
-          </button>
-
-          <button
-            onClick={() => {
-              audio.play("click");
-              onOpenProfile();
-            }}
-            className="flex flex-col items-center text-white/60 hover:text-white transition-colors cursor-pointer group"
-          >
-            <User className="w-5 h-5 text-white/60 mb-0.5 group-hover:text-white" />
-            <span className="text-[10px] tracking-wide">My Player</span>
-          </button>
-
-          <button
-            onClick={() => {
-              audio.play("click");
-            }}
-            className="flex flex-col items-center text-white transition-colors cursor-pointer group"
-          >
-            <Trophy className="w-5 h-5 text-[#FF2A6D] mb-0.5 group-hover:scale-110 transition-transform" />
-            <span className="text-[10px] font-bold tracking-wide text-white">Achievements</span>
-          </button>
-
-          <button
-            onClick={() => {
-              audio.play("click");
-              onOpenStore();
-            }}
-            className="flex flex-col items-center text-white/60 hover:text-white transition-colors cursor-pointer group"
-          >
-            <ShoppingCart className="w-5 h-5 text-white/60 mb-0.5 group-hover:text-white" />
-            <span className="text-[10px] tracking-wide">Store</span>
-          </button>
-        </div>
-      </footer>
+      {/* Bottom Navigation Dock */}
+      <BottomNavigationDock
+        activeTab="achievements"
+        onNavigate={(tab) => {
+          if (tab === "home") onOpenHome();
+          else if (tab === "player") onOpenProfile();
+          else if (tab === "store") onOpenStore();
+        }}
+      />
     </div>
   );
 };

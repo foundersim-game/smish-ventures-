@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
-import { Sparkles, Crown } from "lucide-react";
+import { Crown } from "lucide-react";
 import { AnalyticsService } from "../../services/analytics/analytics.service";
+import { AdMobService } from "../../services/ads/admob.service";
 
 interface AdBannerSlotProps {
   isAdEligible: boolean;
@@ -12,16 +13,19 @@ interface AdBannerSlotProps {
 
 export const AdBannerSlot: React.FC<AdBannerSlotProps> = ({
   isAdEligible,
-  onRemoveAdsClick,
-  priceLabel = "$0.99",
   showVipBadgeWhenAdFree = true,
   hostName,
 }) => {
   useEffect(() => {
     if (isAdEligible) {
       AnalyticsService.trackEvent("ad_banner_shown");
+      AdMobService.showBanner();
+    } else {
+      AdMobService.hideBanner();
     }
   }, [isAdEligible]);
+
+  // When room is Ad-Free due to VIP pass
   if (!isAdEligible) {
     if (!showVipBadgeWhenAdFree) return null;
     return (
@@ -34,27 +38,6 @@ export const AdBannerSlot: React.FC<AdBannerSlotProps> = ({
     );
   }
 
-  return (
-    <div className="w-full h-12 bg-black/75 border-t border-purple-900/50 flex items-center justify-between px-4 select-none z-20">
-      <div className="flex items-center gap-2">
-        <span className="text-[9px] uppercase font-black text-gray-300 bg-purple-900/80 px-1.5 py-0.5 rounded border border-purple-700/60">
-          SPONSOR
-        </span>
-        <span className="text-[11px] text-gray-300 font-sans leading-tight">
-          Support CHAOS • Keep the party free
-        </span>
-      </div>
-
-      {onRemoveAdsClick && (
-        <button
-          onClick={onRemoveAdsClick}
-          className="flex items-center gap-1 text-[11px] font-bold text-amber-300 hover:text-amber-200 active:scale-95 transition-transform cursor-pointer bg-amber-400/10 px-2.5 py-1 rounded-full border border-amber-400/30 shadow-[0_0_10px_rgba(251,191,36,0.15)]"
-        >
-          <Sparkles className="w-3 h-3 text-amber-400" />
-          <span>Remove Ads ({priceLabel})</span>
-        </button>
-      )}
-    </div>
-  );
+  // Sample banner ads removed: real native AdMob banner is managed directly by AdMobService
+  return null;
 };
-
