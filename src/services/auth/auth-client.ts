@@ -56,16 +56,31 @@ export class AuthClient {
     }
   }
 
+  private static getEffectiveRedirectUrl(): string | undefined {
+    if (typeof window === "undefined") return undefined;
+
+    // Detect if running inside native Capacitor app
+    const isNative = Boolean(
+      (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.() ||
+      window.location.protocol === "capacitor:" ||
+      window.location.protocol === "ionic:" ||
+      (window.location.hostname === "localhost" && /Android|iPhone|iPad/i.test(navigator.userAgent))
+    );
+
+    if (isNative) {
+      return "chaos://auth-callback";
+    }
+
+    return `${window.location.origin}${window.location.pathname}`;
+  }
+
   /**
    * Initiates Sign in with Google (via Supabase OAuth or dev fallback).
    */
   public static async signInWithGoogle(): Promise<{ success: boolean; error?: string }> {
     try {
       const supabase = getSupabaseClient();
-      const redirectUrl =
-        typeof window !== "undefined"
-          ? `${window.location.origin}${window.location.pathname}`
-          : undefined;
+      const redirectUrl = this.getEffectiveRedirectUrl();
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -105,10 +120,7 @@ export class AuthClient {
   public static async signInWithApple(): Promise<{ success: boolean; error?: string }> {
     try {
       const supabase = getSupabaseClient();
-      const redirectUrl =
-        typeof window !== "undefined"
-          ? `${window.location.origin}${window.location.pathname}`
-          : undefined;
+      const redirectUrl = this.getEffectiveRedirectUrl();
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "apple",
@@ -134,6 +146,68 @@ export class AuthClient {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Apple sign in failed";
       return { success: false, error: msg };
+    }
+  }
+
+  /**
+   * Handles native mobile deep link OAuth returns (chaos://auth-callback#access_token=... or ?code=...)
+   */
+  public static async handleUrlCallback(url: string): Promise<boolean> {
+    try {
+      const supabase = getSupabaseClient();
+      // 1. Handle implicit grant hash (#access_token=...&refresh_token=...)
+      const hashIndex = url.indexOf("#");
+      if (hashIndex !== -1) {
+        const hash = url.substring(hashIndex + 1);
+        const params = new URLSearchParams(hash);
+        const accessToken = params.get("access_token");
+        const refreshToken = params.get("refresh_token");
+        if (accessToken && refreshToken) {
+          const { data } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (data?.user?.email) {
+            const provider = (data.user.app_metadata?.provider as "google" | "apple") || "google";
+            const account: UserAccount = {
+              email: data.user.email,
+              isLoggedIn: true,
+              createdAt: Date.now(),
+              provider,
+              name: data.user.user_metadata?.full_name || data.user.user_metadata?.name,
+            };
+            PlayerStorage.saveAccount(account);
+            return true;
+          }
+        }
+      }
+
+      // 2. Handle PKCE code flow (?code=...)
+      const queryIndex = url.indexOf("?");
+      if (queryIndex !== -1) {
+        const query = url.substring(queryIndex + 1);
+        const params = new URLSearchParams(query);
+        const code = params.get("code");
+        if (code) {
+          const { data } = await supabase.auth.exchangeCodeForSession(code);
+          if (data?.user?.email) {
+            const provider = (data.user.app_metadata?.provider as "google" | "apple") || "google";
+            const account: UserAccount = {
+              email: data.user.email,
+              isLoggedIn: true,
+              createdAt: Date.now(),
+              provider,
+              name: data.user.user_metadata?.full_name || data.user.user_metadata?.name,
+            };
+            PlayerStorage.saveAccount(account);
+            return true;
+          }
+        }
+      }
+      return false;
+    } catch (err) {
+      console.error("[AUTH] Error processing mobile OAuth callback:", err);
+      return false;
     }
   }
 

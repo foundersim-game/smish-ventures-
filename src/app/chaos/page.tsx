@@ -240,6 +240,10 @@ export default function ChaosMainApp() {
             if (!event?.url) return;
             try {
               const raw = event.url;
+              if (raw.includes("auth-callback") || raw.includes("access_token") || raw.includes("code=")) {
+                AuthClient.handleUrlCallback(raw);
+                return;
+              }
               const match =
                 raw.match(/code=([a-zA-Z0-9]+)/i) ||
                 raw.match(/join\/([a-zA-Z0-9]+)/i) ||
