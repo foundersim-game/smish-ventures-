@@ -42,7 +42,6 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({
   const [numRounds, setNumRounds] = useState<number>(
     Math.min(scenario.totalRounds || 4, maxRoundsAvailable)
   );
-  const [difficulty, setDifficulty] = useState<DifficultyLevel>("normal");
   const [intensity, setIntensity] = useState<ChaosIntensity>(
     isCouples ? "balanced" : "spicy"
   );
@@ -55,6 +54,13 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({
     haptics.trigger("light");
   };
 
+  const intensityToDifficultyMap: Record<ChaosIntensity, DifficultyLevel> = {
+    chill: "casual",
+    balanced: "normal",
+    spicy: "spicy",
+    insane: "spicy",
+  };
+
   const handleStart = () => {
     onStartChaos({
       minPlayers: 2,
@@ -62,7 +68,7 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({
       targetPlayers: isCouples ? 2 : numPlayers,
       discussionDurationSeconds: roundTime,
       totalRounds: numRounds,
-      difficulty,
+      difficulty: intensityToDifficultyMap[intensity],
       intensity,
     });
   };
@@ -243,33 +249,7 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({
           </select>
         </div>
 
-        {/* Row 4: Difficulty */}
-        <div className="p-3.5 rounded-2xl bg-[#1D1036] border border-purple-800/40 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-purple-900/50 flex items-center justify-center text-cyan-400">
-              <BarChart2 className="w-5 h-5" />
-            </div>
-            <div>
-              <h5 className="font-bold text-white text-sm">Difficulty</h5>
-              <p className="text-gray-400 text-xs">How intense the questions are</p>
-            </div>
-          </div>
-
-          <select
-            value={difficulty}
-            onChange={(e) => {
-              setDifficulty(e.target.value as DifficultyLevel);
-              audio.play("click");
-            }}
-            className="bg-purple-950/80 border border-purple-700/60 rounded-xl px-3 py-1.5 text-xs font-bold text-white outline-none cursor-pointer capitalize"
-          >
-            <option value="casual">Casual</option>
-            <option value="normal">Normal</option>
-            <option value="spicy">Spicy</option>
-          </select>
-        </div>
-
-        {/* Row 5: CHAOS Intensity Slider */}
+        {/* Row 4: CHAOS Intensity Slider */}
         <div className="p-4 rounded-2xl bg-gradient-to-r from-[#2F1138] to-[#1C0E35] border border-amber-500/40 shadow-inner">
           <div className="flex items-center gap-2 mb-2">
             <Zap className="w-5 h-5 text-yellow-400 fill-yellow-400" />
@@ -338,10 +318,10 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({
               <span className="text-[10px] text-gray-400 font-semibold">Per Round</span>
             </div>
             <div>
-              <span className="font-display font-black text-lg text-white capitalize block">
-                {difficulty}
+              <span className="font-display font-black text-lg text-amber-400 capitalize block">
+                {intensity}
               </span>
-              <span className="text-[10px] text-gray-400 font-semibold">Difficulty</span>
+              <span className="text-[10px] text-gray-400 font-semibold">Chaos Level</span>
             </div>
           </div>
         </div>

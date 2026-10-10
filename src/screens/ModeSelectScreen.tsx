@@ -98,11 +98,7 @@ export const ModeSelectScreen: React.FC<ModeSelectScreenProps> = ({
           </div>
 
           <div>
-            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[9px] font-extrabold uppercase mb-0.5">
-              <Sparkles className="w-2.5 h-2.5" />
-              <span>ACTIVE</span>
-            </div>
-            <h3 className="font-display font-black text-xl text-white tracking-tight leading-tight">
+            <h3 className="font-display font-black text-xl text-white tracking-tight leading-tight mt-1">
               PARTY
             </h3>
             <span className="text-[11px] font-bold text-yellow-300">

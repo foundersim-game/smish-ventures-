@@ -19,7 +19,7 @@ import {
   Gamepad2,
 } from "lucide-react";
 import { AvatarKey } from "../core/types/player.types";
-import { AVATAR_CATALOG } from "../core/constants/avatars";
+import { AVATAR_CATALOG, getAvatarDefinition } from "../core/constants/avatars";
 import { PlayerStorage, StoredProfile, UserAccount } from "../services/storage/player-storage";
 import { AvatarPicker } from "../components/molecules/AvatarPicker";
 import { BottomNavigationDock } from "../components/molecules/BottomNavigationDock";
@@ -257,8 +257,8 @@ export const PlayerProfileScreen: React.FC<PlayerProfileScreenProps> = ({
           </span>
         </div>
 
-        <div className="w-8 h-8 rounded-full bg-purple-500/20 border border-purple-400/30 flex items-center justify-center text-purple-300 font-display font-black text-xs shadow-[0_0_12px_rgba(168,85,247,0.3)]">
-          👤
+        <div className={`w-8 h-8 rounded-full bg-gradient-to-tr ${getAvatarDefinition(avatar).gradient} border ${getAvatarDefinition(avatar).borderClass} flex items-center justify-center text-sm shadow-[0_0_12px_rgba(168,85,247,0.4)]`}>
+          {getAvatarDefinition(avatar).emoji}
         </div>
       </header>
 
@@ -333,7 +333,15 @@ export const PlayerProfileScreen: React.FC<PlayerProfileScreenProps> = ({
 
             {/* Avatar Picker Card */}
             <div className="p-3.5 rounded-2xl bg-[#170B2C]/90 border border-purple-500/40 shadow-lg space-y-2">
-              <AvatarPicker selectedAvatar={avatar} onSelectAvatar={setAvatar} />
+              <AvatarPicker
+                selectedAvatar={avatar}
+                onSelectAvatar={(newAvatar) => {
+                  setAvatar(newAvatar);
+                  PlayerStorage.saveProfile({ name: name.trim() || "Player", avatar: newAvatar });
+                  PlayerStorage.pushCloudProfile();
+                  if (onSaved) onSaved(name.trim() || "Player", newAvatar);
+                }}
+              />
             </div>
 
             {/* Career Stats Card */}

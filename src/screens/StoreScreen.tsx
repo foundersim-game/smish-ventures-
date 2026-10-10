@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { HOST_PASS_TIERS, HostPassProduct } from "../backend/services/monetization.service";
 import { PlayerStorage, HostPassStatus } from "../services/storage/player-storage";
+import { getAvatarDefinition } from "../core/constants/avatars";
 import { NativePaymentService } from "../services/payments/native-payment.service";
 import { BottomNavigationDock } from "../components/molecules/BottomNavigationDock";
 import { audio } from "../services/audio/audio-manager";
@@ -36,6 +37,7 @@ export const StoreScreen: React.FC<StoreScreenProps> = ({
   onOpenAchievements,
 }) => {
   const [passStatus, setPassStatus] = useState<HostPassStatus>(PlayerStorage.getHostPass());
+  const [profile, setProfile] = useState(PlayerStorage.getProfile());
   const [selectedTierId, setSelectedTierId] = useState<string>("pass_50_games");
   const [isProcessing, setIsProcessing] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -43,7 +45,10 @@ export const StoreScreen: React.FC<StoreScreenProps> = ({
 
   useEffect(() => {
     NativePaymentService.initialize();
+    setProfile(PlayerStorage.getProfile());
   }, []);
+
+  const avatarDef = getAvatarDefinition(profile.avatar);
 
   const handleBuyPass = async (tier: HostPassProduct) => {
     setIsProcessing(true);
@@ -122,8 +127,8 @@ export const StoreScreen: React.FC<StoreScreenProps> = ({
         {/* Active Pass Banner */}
         <div className="p-3 rounded-2xl bg-gradient-to-r from-purple-950/90 via-[#1D0830] to-pink-950/90 border border-purple-500/40 shadow-lg flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center text-xl shadow-md">
-              👑
+            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${avatarDef.gradient} border ${avatarDef.borderClass} flex items-center justify-center text-xl shadow-md`}>
+              {avatarDef.emoji}
             </div>
             <div>
               <span className="text-[9.5px] font-black uppercase text-purple-300 tracking-wider block">

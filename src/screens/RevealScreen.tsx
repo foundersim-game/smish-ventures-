@@ -15,22 +15,11 @@ import { audio } from "../services/audio/audio-manager";
 import { haptics } from "../services/haptics/haptics-manager";
 import { VoteEvaluator } from "../core/engine/vote-evaluator";
 
-const demoImages: Record<string, string> = {
-  Aks: "/avatars/aks.jpg",
-  Riya: "/avatars/riya.jpg",
-  Karan: "/avatars/karan.jpg",
-  Simran: "/avatars/simran.jpg",
-  Vishal: "/avatars/vishal.jpg",
-  Neha: "/avatars/neha.jpg",
-};
-
 const MiniVoterAvatar: React.FC<{ player?: { name: string; avatar?: any }; size?: number }> = ({
   player,
   size = 20,
 }) => {
-  const [imgError, setImgError] = useState(false);
   if (!player) return null;
-  const preset = demoImages[player.name];
   const def = getAvatarDefinition(player.avatar);
 
   return (
@@ -43,18 +32,9 @@ const MiniVoterAvatar: React.FC<{ player?: { name: string; avatar?: any }; size?
       }}
       title={player.name}
     >
-      {preset && !imgError ? (
-        <img
-          src={preset}
-          alt={player.name}
-          className="w-full h-full object-cover"
-          onError={() => setImgError(true)}
-        />
-      ) : (
-        <span className="text-[10px] leading-none select-none filter drop-shadow">
-          {def.emoji || "👤"}
-        </span>
-      )}
+      <span className="text-[10px] leading-none select-none filter drop-shadow">
+        {def.emoji || "👤"}
+      </span>
     </div>
   );
 };

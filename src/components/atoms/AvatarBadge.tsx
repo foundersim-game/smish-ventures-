@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { AvatarKey } from "../../core/types/player.types";
 import { Check, MoreHorizontal } from "lucide-react";
 import { getAvatarDefinition } from "../../core/constants/avatars";
@@ -26,7 +26,6 @@ export const AvatarBadge: React.FC<AvatarBadgeProps> = ({
   size = "md",
   showLabel = true,
 }) => {
-  const [imgError, setImgError] = useState(false);
   const def = getAvatarDefinition(avatarKey);
 
   const sizeMap = {
@@ -35,19 +34,6 @@ export const AvatarBadge: React.FC<AvatarBadgeProps> = ({
     lg: { box: "w-16 h-16", emoji: "text-3xl", crown: "text-2xl -top-4", label: "text-xs" },
     xl: { box: "w-20 h-20", emoji: "text-4xl", crown: "text-3xl -top-5", label: "text-sm" },
   }[size];
-
-  // Specific squad memojis if name matches
-  const demoImages: Record<string, string> = {
-    Aks: "/avatars/aks.jpg",
-    Riya: "/avatars/riya.jpg",
-    Karan: "/avatars/karan.jpg",
-    Simran: "/avatars/simran.jpg",
-    Vishal: "/avatars/vishal.jpg",
-    Neha: "/avatars/neha.jpg",
-  };
-
-  const hasPresetImage = Boolean(demoImages[name]) && !imgError;
-  const imageSrc = demoImages[name];
 
   return (
     <div className="flex flex-col items-center select-none">
@@ -71,22 +57,13 @@ export const AvatarBadge: React.FC<AvatarBadgeProps> = ({
           className={`
             ${sizeMap.box} rounded-full overflow-hidden border-2.5 ${def.borderClass}
             relative shadow-lg flex items-center justify-center
-            ${hasPresetImage ? "bg-[#1D0C30]" : `bg-gradient-to-tr ${def.gradient}`}
+            bg-gradient-to-tr ${def.gradient}
             transition-transform duration-200
           `}
         >
-          {hasPresetImage ? (
-            <img
-              src={imageSrc}
-              alt={name}
-              className="w-full h-full object-cover rounded-full"
-              onError={() => setImgError(true)}
-            />
-          ) : (
-            <span className={`${sizeMap.emoji} filter drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)] select-none`}>
-              {def.emoji}
-            </span>
-          )}
+          <span className={`${sizeMap.emoji} filter drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)] select-none`}>
+            {def.emoji}
+          </span>
         </div>
 
         {/* Ready Green Checkmark Pill */}

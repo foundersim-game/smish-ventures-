@@ -1,4 +1,4 @@
-import { ScenarioResourceState } from "../types/room.types";
+import { ScenarioResourceState, ChaosIntensity } from "../types/room.types";
 import { ScenarioConsequence, ScenarioRound } from "../types/scenario.types";
 import { RoundVoteResolution } from "../types/vote.types";
 
@@ -16,7 +16,8 @@ export class ConsequenceResolver {
   public static resolve(
     currentRound: ScenarioRound,
     resolution: RoundVoteResolution,
-    currentResourceState: ScenarioResourceState
+    currentResourceState: ScenarioResourceState,
+    intensity?: ChaosIntensity
   ): ResolvedConsequenceOutcome {
     const winningId = resolution.winningOptionId;
     const consequence = currentRound.consequences[winningId] || {
@@ -33,24 +34,40 @@ export class ConsequenceResolver {
       chaosScore: currentResourceState.chaosScore ?? 0,
     };
 
+    // Dynamic intensity multiplier gives Chaos Slider real gameplay impact
+    const multiplier =
+      intensity === "chill"
+        ? 0.75
+        : intensity === "spicy"
+        ? 1.35
+        : intensity === "insane"
+        ? 1.75
+        : 1.0;
+
     // Apply resource deltas
     if (consequence.resourceDelta) {
       if (typeof consequence.resourceDelta.balance === "number") {
+        const delta =
+          consequence.resourceDelta.balance < 0
+            ? Math.round(consequence.resourceDelta.balance * multiplier)
+            : consequence.resourceDelta.balance;
         const currentBal = updatedResourceState.balance ?? 0;
-        updatedResourceState.balance = Math.max(
-          0,
-          currentBal + consequence.resourceDelta.balance
-        );
+        updatedResourceState.balance = Math.max(0, currentBal + delta);
       }
       if (typeof consequence.resourceDelta.sanity === "number") {
+        const delta =
+          consequence.resourceDelta.sanity < 0
+            ? Math.round(consequence.resourceDelta.sanity * multiplier)
+            : consequence.resourceDelta.sanity;
         updatedResourceState.sanity = Math.max(
           0,
-          Math.min(100, (updatedResourceState.sanity ?? 0) + consequence.resourceDelta.sanity)
+          Math.min(100, (updatedResourceState.sanity ?? 0) + delta)
         );
       }
       if (typeof consequence.resourceDelta.chaosScore === "number") {
+        const delta = Math.round(consequence.resourceDelta.chaosScore * multiplier);
         updatedResourceState.chaosScore =
-          (updatedResourceState.chaosScore ?? 0) + consequence.resourceDelta.chaosScore;
+          (updatedResourceState.chaosScore ?? 0) + delta;
       }
     }
 

@@ -377,7 +377,8 @@ export class GameplayService {
         const consequenceResult = ConsequenceResolver.resolve(
           currentRound,
           resolution,
-          room.resourceState
+          room.resourceState,
+          room.settings.intensity
         );
         this.currentConsequences.set(room.id, consequenceResult);
         await this.persistRoundData(room.id, room.currentRoundIndex, { consequence: consequenceResult });
@@ -448,8 +449,16 @@ export class GameplayService {
     const missions = MissionEngine.generateMissions(nextIndex, players, roundDef);
     this.currentMissions.set(room.id, missions);
 
-    // Roll Chaos Modifier (65% chance in round 2+)
-    if (Math.random() < 0.65 && room.mode === "party") {
+    // Roll Chaos Modifier dynamically based on selected Chaos Intensity
+    const intensityModifierChances: Record<string, number> = {
+      chill: 0.25,     // Relaxed game, rare chaos modifiers
+      balanced: 0.50,  // Standard party twists
+      spicy: 0.75,     // Frequent wild twists & secret saboteurs
+      insane: 1.00,    // Pure madness: guaranteed wild modifier every round!
+    };
+    const rollChance = intensityModifierChances[room.settings.intensity || "spicy"] ?? 0.65;
+
+    if (Math.random() < rollChance && room.mode === "party") {
       const mod = getRandomChaosModifier();
       this.currentModifiers.set(room.id, mod);
       this.bus.publish(roomCode, "CHAOS_MODIFIER_TRIGGERED", { modifier: mod, roundIndex: nextIndex });
