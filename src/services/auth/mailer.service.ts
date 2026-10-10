@@ -65,7 +65,12 @@ export class MailerService {
       };
     }
 
-    const fromAddress = process.env.SMTP_FROM || `"CHAOS Party Game" <${user}>`;
+    // Hostinger policy: sender mailbox must match authenticated SMTP_USER (hey@smishventures.com)
+    let fromAddress = `"CHAOS" <${user}>`;
+    if (process.env.SMTP_FROM && process.env.SMTP_FROM.includes(user)) {
+      fromAddress = process.env.SMTP_FROM;
+    }
+
     const subject = `Your CHAOS Login Code: ${otp}`;
     const htmlContent = `
       <!DOCTYPE html>
@@ -102,6 +107,10 @@ export class MailerService {
     try {
       const info = await transporter.sendMail({
         from: fromAddress,
+        envelope: {
+          from: user,
+          to: toEmail,
+        },
         to: toEmail,
         subject,
         html: htmlContent,
