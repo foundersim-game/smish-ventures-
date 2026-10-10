@@ -17,6 +17,8 @@ import { haptics } from "@/services/haptics/haptics-manager";
 import { AdMobService } from "@/services/ads/admob.service";
 import { NativePaymentService } from "@/services/payments/native-payment.service";
 import { AuthClient } from "@/services/auth/auth-client";
+import { WakeLockService } from "@/services/device/wake-lock.service";
+import { Wifi, WifiOff } from "lucide-react";
 
 import { HomeScreen } from "@/screens/HomeScreen";
 import { JoinScreen } from "@/screens/JoinScreen";
@@ -119,6 +121,10 @@ export default function ChaosMainApp() {
   // Active Session Persistence State
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
 
+  // Network & Reconnection States (for patchy Wi-Fi / bar connection drops)
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  const [showBackOnline, setShowBackOnline] = useState(false);
+
   const eventSourceRef = useRef<EventSource | null>(null);
   const roomRef = useRef<RoomSession | null>(room);
   const viewRef = useRef<ViewState>(view);
@@ -129,6 +135,36 @@ export default function ChaosMainApp() {
     viewRef.current = view;
     currentPlayerRef.current = currentPlayer;
   }, [room, view, currentPlayer]);
+
+  // Screen Wake Lock during active gameplay rounds so phones don't auto-lock during 60-90s debates
+  useEffect(() => {
+    if (room?.phase && !["lobby", "chaos_report"].includes(room.phase)) {
+      WakeLockService.request();
+    } else {
+      WakeLockService.release();
+    }
+    return () => {
+      WakeLockService.release();
+    };
+  }, [room?.phase]);
+
+  // Listen to browser network changes
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsReconnecting(false);
+      setShowBackOnline(true);
+      setTimeout(() => setShowBackOnline(false), 2000);
+    };
+    const handleOffline = () => {
+      setIsReconnecting(true);
+    };
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
   // Initialize profile & detect URL join query (?join=ABCD) & restore live sessions
   useEffect(() => {
@@ -587,10 +623,18 @@ export default function ChaosMainApp() {
     if (!room?.roomCode) return;
 
     let isMounted = true;
+    let consecutiveErrors = 0;
     const interval = setInterval(async () => {
       try {
         const fresh = await ApiClient.getRoom(room.roomCode);
         if (!isMounted) return;
+
+        if (consecutiveErrors >= 2) {
+          setIsReconnecting(false);
+          setShowBackOnline(true);
+          setTimeout(() => setShowBackOnline(false), 2000);
+        }
+        consecutiveErrors = 0;
 
         const currentRoundIdx = room.currentRoundIndex;
         setPlayers((prev) => {
@@ -719,7 +763,11 @@ export default function ChaosMainApp() {
           }
         }
       } catch {
-        // Ignore background polling glitches
+        if (!isMounted) return;
+        consecutiveErrors++;
+        if (consecutiveErrors >= 2) {
+          setIsReconnecting(true);
+        }
       }
     }, 3000);
 
@@ -1295,6 +1343,27 @@ export default function ChaosMainApp() {
               }
             }}
           />
+        )}
+
+        {/* Floating Reconnection Toast / Network Indicator */}
+        {isReconnecting && (
+          <div
+            style={{ top: "max(12px, env(safe-area-inset-top, 12px))" }}
+            className="fixed left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#2A1208]/95 border border-amber-500/70 shadow-[0_0_20px_rgba(245,158,11,0.45)] backdrop-blur-md text-amber-300 text-xs font-bold animate-pulse pointer-events-none"
+          >
+            <WifiOff className="w-3.5 h-3.5 text-amber-400" />
+            <span>Reconnecting to room...</span>
+          </div>
+        )}
+
+        {showBackOnline && !isReconnecting && (
+          <div
+            style={{ top: "max(12px, env(safe-area-inset-top, 12px))" }}
+            className="fixed left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#082218]/95 border border-emerald-500/70 shadow-[0_0_20px_rgba(16,185,129,0.45)] backdrop-blur-md text-emerald-300 text-xs font-bold animate-fade-in pointer-events-none"
+          >
+            <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Back Online</span>
+          </div>
         )}
 
         {/* Global Floating Reactions & Buzzer Alerts Overlay */}

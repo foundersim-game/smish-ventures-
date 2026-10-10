@@ -11,6 +11,7 @@ interface SettingsModalProps {
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const [soundEnabled, setSoundEnabled] = useState(audio.getSoundEnabled());
+  const [soundVolume, setSoundVolume] = useState(audio.getSoundVolume());
   const [hapticsEnabled, setHapticsEnabled] = useState(haptics.getEnabled());
   const [reducedMotion, setReducedMotion] = useState(false);
 
@@ -21,6 +22,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     setSoundEnabled(next);
     audio.setSoundEnabled(next);
     if (next) audio.play("click");
+  };
+
+  const handleVolumeChange = (vol: number) => {
+    setSoundVolume(vol);
+    audio.setSoundVolume(vol);
   };
 
   const toggleHaptics = () => {
@@ -50,28 +56,49 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         </h3>
 
         <div className="flex flex-col gap-3">
-          {/* Sound FX */}
-          <div className="flex items-center justify-between p-3 rounded-2xl bg-purple-950/60 border border-purple-800/40">
-            <div className="flex items-center gap-3">
-              {soundEnabled ? (
-                <Volume2 className="w-5 h-5 text-amber-300" />
-              ) : (
-                <VolumeX className="w-5 h-5 text-gray-500" />
-              )}
-              <span className="text-white font-sans font-bold text-sm">Sound Effects</span>
-            </div>
-            <button
-              onClick={toggleSound}
-              className={`w-12 h-6 rounded-full transition-colors relative ${
-                soundEnabled ? "bg-amber-400" : "bg-gray-700"
-              }`}
-            >
-              <div
-                className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                  soundEnabled ? "translate-x-6" : "translate-x-1"
+          {/* Sound FX with Volume Slider */}
+          <div className="p-3 rounded-2xl bg-purple-950/60 border border-purple-800/40 flex flex-col gap-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {soundEnabled ? (
+                  <Volume2 className="w-5 h-5 text-amber-300" />
+                ) : (
+                  <VolumeX className="w-5 h-5 text-gray-500" />
+                )}
+                <span className="text-white font-sans font-bold text-sm">Sound Effects</span>
+              </div>
+              <button
+                onClick={toggleSound}
+                className={`w-12 h-6 rounded-full transition-colors relative ${
+                  soundEnabled ? "bg-amber-400" : "bg-gray-700"
                 }`}
-              />
-            </button>
+              >
+                <div
+                  className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                    soundEnabled ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Continuous Volume Slider (When sound is enabled) */}
+            {soundEnabled && (
+              <div className="pt-2 border-t border-purple-900/50 flex items-center gap-2.5 px-0.5">
+                <Volume2 className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />
+                <input
+                  type="range"
+                  min="0.1"
+                  max="1"
+                  step="0.05"
+                  value={soundVolume}
+                  onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+                  className="w-full accent-amber-400 bg-purple-900/60 h-1.5 rounded-lg appearance-none cursor-pointer"
+                />
+                <span className="text-[11px] font-mono font-bold text-amber-300 min-w-[32px] text-right">
+                  {Math.round(soundVolume * 100)}%
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Haptics */}

@@ -55,12 +55,20 @@ class AudioManager {
   private bgmAudio: HTMLAudioElement | null = null;
   private currentBgmTrack: "ambient" | "debate" | null = null;
   private isSoundEnabled = true;
+  private soundVolume = 0.8;
   private isMusicEnabled = true;
   private musicVolume = 0.22;
   private isPreloaded = false;
 
   private constructor() {
     if (typeof window !== "undefined") {
+      try {
+        const savedVol = localStorage.getItem("chaos_sound_volume");
+        if (savedVol !== null) this.soundVolume = parseFloat(savedVol);
+        const savedEnabled = localStorage.getItem("chaos_sound_enabled");
+        if (savedEnabled !== null) this.isSoundEnabled = savedEnabled === "true";
+      } catch {}
+
       const initAudio = () => {
         this.initContext();
         this.preloadAllSounds();
@@ -708,6 +716,8 @@ class AudioManager {
   public play(type: SoundType, volume = 1.0): void {
     if (!this.isSoundEnabled || typeof window === "undefined") return;
 
+    const effectiveVol = volume * this.soundVolume;
+
     // Smooth synthesized sounds for core dramatic moments - ZERO harshness
     if (type === "box_shake") {
       this.playTensionRumble();
@@ -715,7 +725,7 @@ class AudioManager {
     }
 
     if (type === "reveal_bgm") {
-      this.playRevealBGM(volume);
+      this.playRevealBGM(effectiveVol);
       return;
     }
 
@@ -725,49 +735,49 @@ class AudioManager {
     }
 
     if (type === "box_open") {
-      this.playChestOpen(volume * 0.6);
+      this.playChestOpen(effectiveVol * 0.6);
       return;
     }
 
     if (type === "coin_flip") {
-      this.playCoinFlip(volume);
+      this.playCoinFlip(effectiveVol);
       return;
     }
 
     if (type === "coin_land") {
-      this.playCoinLand(volume);
+      this.playCoinLand(effectiveVol);
       return;
     }
 
     if (type === "fanfare") {
-      this.playFanfare(volume * 0.6);
+      this.playFanfare(effectiveVol * 0.6);
       return;
     }
 
     if (type === "time_up") {
-      this.playSoftTimeUp(volume * 0.5);
+      this.playSoftTimeUp(effectiveVol * 0.5);
       return;
     }
 
     // Dedicated procedural meme sounds
     if (type === "buzzer_bullshit" || type === "buzzer") {
-      this.playBullshitBuzzer(volume);
+      this.playBullshitBuzzer(effectiveVol);
       return;
     }
 
     if (type === "buzzer_cap" || type === "invalid") {
-      this.playCapSound(volume);
+      this.playCapSound(effectiveVol);
       return;
     }
 
     if (type === "buzzer_anvil") {
-      this.playNoMoveAnvil(volume);
+      this.playNoMoveAnvil(effectiveVol);
       return;
     }
 
     // Replace abrasive BAM metallic crashes with warm, smooth cinematic bass drops
     if (type === "strike" || type === "phones_down") {
-      this.playCinematicDrop(volume * 0.4);
+      this.playCinematicDrop(effectiveVol * 0.4);
       return;
     }
 
@@ -787,7 +797,7 @@ class AudioManager {
         source.buffer = buffer;
 
         const gainNode = this.ctx.createGain();
-        gainNode.gain.setValueAtTime(Math.min(1.0, Math.max(0.1, volume)), this.ctx.currentTime);
+        gainNode.gain.setValueAtTime(Math.min(1.0, Math.max(0.01, effectiveVol)), this.ctx.currentTime);
 
         source.connect(gainNode);
         gainNode.connect(this.ctx.destination);
@@ -803,7 +813,7 @@ class AudioManager {
     if (fallbackUrl) {
       try {
         const audio = new Audio(fallbackUrl);
-        audio.volume = Math.min(1.0, Math.max(0.1, volume));
+        audio.volume = Math.min(1.0, Math.max(0.01, effectiveVol));
         audio.play().catch(() => {});
       } catch {
         // Ignored
@@ -813,6 +823,24 @@ class AudioManager {
 
   public setSoundEnabled(enabled: boolean): void {
     this.isSoundEnabled = enabled;
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("chaos_sound_enabled", enabled ? "true" : "false");
+      } catch {}
+    }
+  }
+
+  public setSoundVolume(vol: number): void {
+    this.soundVolume = Math.max(0, Math.min(1, vol));
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("chaos_sound_volume", this.soundVolume.toString());
+      } catch {}
+    }
+  }
+
+  public getSoundVolume(): number {
+    return this.soundVolume;
   }
 
   public setMusicEnabled(enabled: boolean): void {

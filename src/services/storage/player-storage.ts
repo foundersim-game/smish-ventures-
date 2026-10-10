@@ -400,4 +400,45 @@ export class PlayerStorage {
       // Ignore
     }
   }
+
+  /**
+   * Sound & Haptic user preferences persistence
+   */
+  public static getSoundVolume(): number {
+    if (typeof window === "undefined") return 0.8;
+    try {
+      const saved = localStorage.getItem("chaos_sound_volume");
+      return saved !== null ? parseFloat(saved) : 0.8;
+    } catch {
+      return 0.8;
+    }
+  }
+
+  public static saveSoundVolume(vol: number): void {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem("chaos_sound_volume", vol.toString());
+    } catch {
+      // Ignore
+    }
+  }
+
+  public static getSoundEnabled(): boolean {
+    if (typeof window === "undefined") return true;
+    try {
+      const saved = localStorage.getItem("chaos_sound_enabled");
+      return saved !== null ? saved === "true" : true;
+    } catch {
+      return true;
+    }
+  }
+
+  public static saveSoundEnabled(enabled: boolean): void {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem("chaos_sound_enabled", enabled ? "true" : "false");
+    } catch {
+      // Ignore
+    }
+  }
 }
