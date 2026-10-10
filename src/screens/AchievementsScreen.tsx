@@ -201,7 +201,10 @@ export const AchievementsScreen: React.FC<AchievementsScreenProps> = ({
   return (
     <div className="relative h-full max-h-[100dvh] w-full flex flex-col justify-between bg-[#090310] select-none overflow-hidden">
       {/* Top Header */}
-      <header className="relative w-full max-w-sm mx-auto flex items-center justify-between z-10 flex-shrink-0 pt-3 pb-1 px-4">
+      <header
+        style={{ paddingTop: "max(14px, env(safe-area-inset-top, 14px))" }}
+        className="relative w-full max-w-sm mx-auto flex items-center justify-between z-10 flex-shrink-0 pb-1 px-4"
+      >
         <button
           onClick={() => {
             audio.play("click");

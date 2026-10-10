@@ -75,7 +75,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   return (
     <div className="relative h-full max-h-[100dvh] w-full flex flex-col justify-between bg-gradient-to-b from-[#130526] via-[#1C0739] to-[#2B0C54] overflow-hidden select-none">
       {/* Top Header Controls (Matching Screen_1.png) */}
-      <header className="relative z-10 w-full max-w-sm mx-auto flex items-center justify-between pt-3 pb-1 px-4 flex-shrink-0">
+      <header
+        style={{ paddingTop: "max(14px, env(safe-area-inset-top, 14px))" }}
+        className="relative z-10 w-full max-w-sm mx-auto flex items-center justify-between pb-1 px-4 flex-shrink-0"
+      >
         <button
           onClick={() => {
             audio.play("click");

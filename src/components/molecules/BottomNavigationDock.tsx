@@ -25,7 +25,12 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
   };
 
   return (
-    <footer className={`relative z-20 w-full max-w-sm mx-auto px-4 pb-3 pt-2 flex-shrink-0 ${className}`}>
+    <footer
+      style={{
+        paddingBottom: "calc(max(12px, env(safe-area-inset-bottom, 12px)) + var(--admob-banner-height, 0px))",
+      }}
+      className={`relative z-20 w-full max-w-sm mx-auto px-4 pt-2 flex-shrink-0 transition-[padding] duration-200 ${className}`}
+    >
       <div className="w-full rounded-3xl bg-[#14062B]/90 border border-purple-500/25 backdrop-blur-xl px-3 py-2 flex items-center justify-around shadow-2xl">
         {/* 1. Home */}
         <button

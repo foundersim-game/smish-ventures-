@@ -78,7 +78,10 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({
   return (
     <div className="relative h-full max-h-[100dvh] w-full flex flex-col justify-between px-3.5 py-1.5 sm:py-2.5 bg-[#090310] select-none overflow-hidden">
       {/* Top Header */}
-      <header className="relative w-full max-w-sm mx-auto flex items-center justify-between z-10 flex-shrink-0">
+      <header
+        style={{ paddingTop: "max(14px, env(safe-area-inset-top, 14px))" }}
+        className="relative w-full max-w-sm mx-auto flex items-center justify-between z-10 flex-shrink-0"
+      >
         <button
           onClick={onBack}
           className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-gray-200 active:scale-95 transition-transform"
@@ -329,7 +332,12 @@ export const GameSettingsScreen: React.FC<GameSettingsScreenProps> = ({
       </div>
 
       {/* Start Button */}
-      <div className="w-full max-w-sm mx-auto flex-shrink-0 mb-1">
+      <div
+        style={{
+          paddingBottom: "calc(max(10px, env(safe-area-inset-bottom, 10px)) + var(--admob-banner-height, 0px))",
+        }}
+        className="w-full max-w-sm mx-auto flex-shrink-0 mb-1 transition-[padding] duration-200"
+      >
         <ChaosButton
           variant="primary"
           size="lg"

@@ -138,7 +138,10 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
     <div className="relative h-full max-h-[100dvh] w-full flex flex-col justify-between bg-[#090310] px-3.5 py-2.5 sm:py-3.5 select-none overflow-hidden">
       <div className="w-full max-w-sm mx-auto flex-1 flex flex-col justify-between overflow-hidden">
         {/* Top Bar */}
-        <header className="relative w-full flex items-center justify-between z-10 py-1">
+        <header
+          style={{ paddingTop: "max(12px, env(safe-area-inset-top, 12px))" }}
+          className="relative w-full flex items-center justify-between z-10 py-1"
+        >
           {room.isPaidSession ? (
             <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[11px] font-black uppercase tracking-wider shadow">
               <Sparkles className="w-3 h-3 text-emerald-300" />
@@ -328,7 +331,12 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
         </div>
 
         {/* Host Start Game CTA (ALWAYS Pinned Visible!) */}
-        <div className="w-full mt-1 mb-1">
+        <div
+          style={{
+            paddingBottom: "calc(max(8px, env(safe-area-inset-bottom, 8px)) + var(--admob-banner-height, 0px))",
+          }}
+          className="w-full mt-1 mb-1 transition-[padding] duration-200"
+        >
           {isHost ? (
             <ChaosButton
               variant="primary"

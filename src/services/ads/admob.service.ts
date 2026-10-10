@@ -113,8 +113,13 @@ export class AdMobService {
    */
   public static setAdFree(active: boolean): void {
     this.isAdFreeActive = active;
-    if (active && this.isBannerVisible) {
-      this.hideBanner();
+    if (active) {
+      if (typeof document !== "undefined") {
+        document.documentElement.style.setProperty("--admob-banner-height", "0px");
+      }
+      if (this.isBannerVisible) {
+        this.hideBanner();
+      }
     }
   }
 
@@ -143,6 +148,9 @@ export class AdMobService {
         isTesting,
       });
       this.isBannerVisible = true;
+      if (typeof document !== "undefined") {
+        document.documentElement.style.setProperty("--admob-banner-height", "56px");
+      }
     } catch (err) {
       console.warn("[AdMobService] Failed to show native banner:", err);
     }
@@ -157,6 +165,9 @@ export class AdMobService {
     try {
       await AdMob.hideBanner();
       this.isBannerVisible = false;
+      if (typeof document !== "undefined") {
+        document.documentElement.style.setProperty("--admob-banner-height", "0px");
+      }
     } catch (err) {
       console.warn("[AdMobService] Failed to hide native banner:", err);
     }

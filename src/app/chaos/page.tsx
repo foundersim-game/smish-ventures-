@@ -369,10 +369,16 @@ export default function ChaosMainApp() {
     };
   }, []);
 
-  // Synchronize Ad-Free status with AdMob native engine
+  // Synchronize Ad-Free status and native banner visibility
   useEffect(() => {
-    AdMobService.setAdFree(Boolean(room?.isPaidSession));
-  }, [room?.isPaidSession]);
+    const isPaid = Boolean(room?.isPaidSession);
+    AdMobService.setAdFree(isPaid);
+    if (!isPaid && (view === "gameplay" || view === "lobby")) {
+      AdMobService.showBanner();
+    } else {
+      AdMobService.hideBanner();
+    }
+  }, [room?.isPaidSession, view]);
 
   // Realtime SSE Event Listener
   useEffect(() => {
