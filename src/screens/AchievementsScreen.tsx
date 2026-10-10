@@ -199,9 +199,9 @@ export const AchievementsScreen: React.FC<AchievementsScreenProps> = ({
       : items.filter((a) => a.category === selectedFilter);
 
   return (
-    <div className="relative h-full max-h-[100dvh] w-full flex flex-col justify-between px-3.5 py-2 bg-[#090310] select-none overflow-hidden">
+    <div className="relative h-full max-h-[100dvh] w-full flex flex-col justify-between bg-[#090310] select-none overflow-hidden">
       {/* Top Header */}
-      <header className="relative w-full max-w-sm mx-auto flex items-center justify-between z-10 flex-shrink-0 pt-1 pb-2">
+      <header className="relative w-full max-w-sm mx-auto flex items-center justify-between z-10 flex-shrink-0 pt-3 pb-1 px-4">
         <button
           onClick={() => {
             audio.play("click");
@@ -227,7 +227,7 @@ export const AchievementsScreen: React.FC<AchievementsScreenProps> = ({
       </header>
 
       {/* Scrollable Main Content */}
-      <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar w-full max-w-sm mx-auto space-y-3 pb-2">
+      <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar w-full max-w-sm mx-auto space-y-3 px-4 pb-2">
         {/* Level & Rank Summary Card */}
         <div className="p-3.5 rounded-2xl bg-gradient-to-b from-[#2E0F3E] via-[#1D0830] to-[#120422] border-2 border-purple-500/50 shadow-[0_0_24px_rgba(168,85,247,0.25)]">
           <div className="flex items-center justify-between mb-2">

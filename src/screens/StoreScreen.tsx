@@ -90,9 +90,9 @@ export const StoreScreen: React.FC<StoreScreenProps> = ({
   };
 
   return (
-    <div className="relative h-full max-h-[100dvh] w-full flex flex-col justify-between px-3.5 py-2 bg-[#090310] select-none overflow-hidden">
+    <div className="relative h-full max-h-[100dvh] w-full flex flex-col justify-between bg-[#090310] select-none overflow-hidden">
       {/* Top Header */}
-      <header className="relative w-full max-w-sm mx-auto flex items-center justify-between z-10 flex-shrink-0 pt-1 pb-2">
+      <header className="relative w-full max-w-sm mx-auto flex items-center justify-between z-10 flex-shrink-0 pt-3 pb-1 px-4">
         <button
           onClick={() => {
             audio.play("click");
@@ -118,7 +118,7 @@ export const StoreScreen: React.FC<StoreScreenProps> = ({
       </header>
 
       {/* Scrollable Store Content */}
-      <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar w-full max-w-sm mx-auto space-y-3 pb-2">
+      <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar w-full max-w-sm mx-auto space-y-3 px-4 pb-2">
         {/* Active Pass Banner */}
         <div className="p-3 rounded-2xl bg-gradient-to-r from-purple-950/90 via-[#1D0830] to-pink-950/90 border border-purple-500/40 shadow-lg flex items-center justify-between">
           <div className="flex items-center gap-2.5">
