@@ -2,6 +2,7 @@ interface StoredOtp {
   otp: string;
   expiresAt: number;
   attempts: number;
+  lastRequestedAt: number;
 }
 
 const globalForOtp = global as unknown as {
@@ -16,6 +17,21 @@ export class OtpStore {
   private static store = globalForOtp.chaosOtpStore!;
 
   /**
+   * Checks if an email is within the 60-second cooldown rate limit.
+   */
+  public static canRequest(email: string): { allowed: boolean; waitSeconds?: number } {
+    const cleanEmail = email.trim().toLowerCase();
+    const record = this.store.get(cleanEmail);
+    if (!record || !record.lastRequestedAt) return { allowed: true };
+    const diff = Date.now() - record.lastRequestedAt;
+    const cooldownMs = 60 * 1000; // 60s
+    if (diff < cooldownMs) {
+      return { allowed: false, waitSeconds: Math.ceil((cooldownMs - diff) / 1000) };
+    }
+    return { allowed: true };
+  }
+
+  /**
    * Generates and saves a 6-digit OTP code valid for 10 minutes.
    */
   public static generate(email: string): string {
@@ -27,6 +43,7 @@ export class OtpStore {
       otp,
       expiresAt,
       attempts: 0,
+      lastRequestedAt: Date.now(),
     });
 
     return otp;
