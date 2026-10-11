@@ -1,4 +1,5 @@
 import { AvatarKey } from "../../core/types/player.types";
+import { getApiBaseUrl } from "../network/api-client";
 
 export interface StoredProfile {
   name: string;
@@ -365,7 +366,7 @@ export class PlayerStorage {
       const profile = this.getProfile();
       const careerStats = this.getCareerStats();
       const passStatus = this.getHostPass();
-      await fetch("/api/auth/profile", {
+      await fetch(`${getApiBaseUrl()}/api/auth/profile`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

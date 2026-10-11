@@ -234,7 +234,7 @@ export class NativePaymentService {
       console.log("[NativePaymentService] Recovering interrupted 2FA purchase:", pending);
 
       const deviceId = PlayerStorage.getDeviceId();
-      const response = await fetch("/api/purchases/verify", {
+      const response = await fetch(`${getApiBaseUrl()}/api/purchases/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -1,5 +1,6 @@
 import { getSupabaseClient } from "../supabase/supabase-client";
 import { PlayerStorage, UserAccount } from "../storage/player-storage";
+import { getApiBaseUrl } from "../network/api-client";
 
 export class AuthClient {
   /**
@@ -7,7 +8,7 @@ export class AuthClient {
    */
   public static async requestEmailOtp(email: string): Promise<{ success: boolean; message?: string; error?: string }> {
     try {
-      const res = await fetch("/api/auth/otp/send", {
+      const res = await fetch(`${getApiBaseUrl()}/api/auth/otp/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -31,7 +32,7 @@ export class AuthClient {
     otp: string
   ): Promise<{ success: boolean; account?: UserAccount; error?: string }> {
     try {
-      const res = await fetch("/api/auth/otp/verify", {
+      const res = await fetch(`${getApiBaseUrl()}/api/auth/otp/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, otp }),
@@ -250,7 +251,7 @@ export class AuthClient {
     const account = PlayerStorage.getAccount();
     if (account?.email) {
       try {
-        await fetch("/api/auth/account/delete", {
+        await fetch(`${getApiBaseUrl()}/api/auth/account/delete`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: account.email }),
