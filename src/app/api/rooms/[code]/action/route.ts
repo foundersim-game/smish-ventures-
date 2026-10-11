@@ -108,6 +108,15 @@ export async function POST(
       }
 
       case "ACTIVATE_HOST_PASS": {
+        // Security: Only the verified host can unlock ad-free for this room
+        const { RoomRepository } = await import("../../../../../backend/repositories/room.repository");
+        const passRoom = await RoomRepository.getInstance().findByCode(code);
+        if (!passRoom || passRoom.hostId !== playerId) {
+          return NextResponse.json(
+            { success: false, error: "Only the verified host can activate a Host Pass for this room." },
+            { status: 403 }
+          );
+        }
         await MonetizationService.activateRoomHostPass(code);
         return NextResponse.json({ success: true });
       }

@@ -67,12 +67,21 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { scenario, adminKey } = body;
 
-    const expectedKey = process.env.ADMIN_SECRET_KEY || "chaos_admin_2026";
-    const headerKey = req.headers.get("x-admin-key");
+    const expectedKey = process.env.ADMIN_SECRET_KEY;
+    if (!expectedKey) {
+      // In dev without env var, allow; in production always require the env var
+      if (process.env.NODE_ENV === "production") {
+        return NextResponse.json(
+          { success: false, error: "Server misconfiguration: admin key not set." },
+          { status: 503 }
+        );
+      }
+    }
 
-    if (adminKey !== expectedKey && headerKey !== expectedKey) {
+    const headerKey = req.headers.get("x-admin-key");
+    if (expectedKey && adminKey !== expectedKey && headerKey !== expectedKey) {
       return NextResponse.json(
-        { success: false, error: "Unauthorized. Provide valid adminKey." },
+        { success: false, error: "Unauthorized." },
         { status: 401 }
       );
     }
