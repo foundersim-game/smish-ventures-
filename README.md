@@ -18,8 +18,12 @@ smish-ventures/
 ├── support.html       # Mandatory App Store Support URL & Help Center
 ├── style.css          # Dark-mode design system with Outfit & Inter typography
 ├── vercel.json        # Clean URLs and route rewrites (/privacy, /terms, /support)
+├── favicon.ico        # Multi-resolution SMISH Ventures favicon
+├── apple-touch-icon.png
 └── assets/
     ├── logo.png             # Official SMISH Ventures studio logo
+    ├── favicon.png          # High-resolution SMISH Ventures brand favicon
+    ├── apple-touch-icon.png
     ├── movie-mogul-icon.png
     ├── movie-mogul-hero.webp
     ├── founder-sim-icon.png
