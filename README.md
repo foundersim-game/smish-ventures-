@@ -3,6 +3,7 @@
 Official publisher and game studio website for **SMISH Ventures** (`smishventures.com`), home to:
 - **Movie Mogul: Studio Tycoon** (iOS & iPadOS)
 - **Founder Sim: Startup Game** (Tech Startup Tycoon — [Apple App Store](https://apps.apple.com/us/app/founder-sim-startup-game/id6761432505))
+- **Mafia Mogul: Crime Tycoon** (Turn-Based Noir Crime Tycoon — [Apple App Store](https://apps.apple.com/app/mafia-mogul-crime-tycoon/id6739665564))
 - Upcoming strategic simulation titles
 
 **Contact & Support:**
@@ -21,7 +22,8 @@ smish-ventures/
     ├── logo.png             # Official SMISH Ventures studio logo
     ├── movie-mogul-icon.png
     ├── movie-mogul-hero.webp
-    └── founder-sim-icon.png
+    ├── founder-sim-icon.png
+    └── mafia-mogul-icon.png
 ```
 
 ## Local Preview
