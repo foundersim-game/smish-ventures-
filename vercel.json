@@ -1,7 +1,4 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nextjs",
-  "buildCommand": "npm run build",
   "cleanUrls": true,
   "trailingSlash": false,
   "headers": [
@@ -31,5 +28,11 @@
         }
       ]
     }
+  ],
+  "rewrites": [
+    { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/terms", "destination": "/terms.html" },
+    { "source": "/support", "destination": "/support.html" },
+    { "source": "/eula", "destination": "/terms.html" }
   ]
 }
