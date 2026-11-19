@@ -33,6 +33,7 @@
     { "source": "/privacy", "destination": "/privacy.html" },
     { "source": "/terms", "destination": "/terms.html" },
     { "source": "/support", "destination": "/support.html" },
+    { "source": "/services", "destination": "/services.html" },
     { "source": "/eula", "destination": "/terms.html" }
   ]
 }
